@@ -120,9 +120,6 @@ export const createPropertySchema = z.object({
     .refine((d) => new Date(d) <= new Date(), {
       message: 'Registration date cannot be in the future',
     }),
-  ownerNationalId: z.string()
-    .min(5,  { message: 'Owner national ID must be at least 5 characters' })
-    .max(20, { message: 'Owner national ID must be at most 20 characters' }),
   notes: z.string().max(500, { message: 'Notes must be at most 500 characters' }).optional(),
 });
 export type CreatePropertyFormData = z.infer<typeof createPropertySchema>;

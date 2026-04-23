@@ -5,48 +5,60 @@ import { useRouter }   from 'next/navigation';
 import { useForm }     from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast }       from 'sonner';
+import { Upload, X }   from 'lucide-react';
 import { createPropertySchema, type CreatePropertyFormData, ZONING_TYPES, LAND_SIZE_UNITS, validateFile } from '@/lib/schemas';
-import { propertyService }  from '@/lib/api/services';
-import { useBlockchainStore } from '@/stores/blockchain.store';
-import { ROUTES }           from '@/lib/navigation';
+import { propertyService } from '@/lib/api/services';
+import { useAuthStore }    from '@/stores/auth.store';
+import { ROUTES }          from '@/lib/navigation';
 
 export default function NewPropertyPage() {
-  const router   = useRouter();
-  const addTx    = useBlockchainStore((s) => s.addTx);
-  const [loading, setLoading]   = useState(false);
-  const [titleDeed, setTitleDeed] = useState<File | null>(null);
-  const [fileError, setFileError] = useState<string | null>(null);
+  const router      = useRouter();
+  const isRegistrar = useAuthStore((s) => s.isRegistrar());
+
+  const [loading, setLoading] = useState(false);
+  const [files, setFiles]     = useState<File[]>([]);
+  const [fileErrors, setFileErrors] = useState<string[]>([]);
 
   const { register, handleSubmit, formState: { errors } } = useForm<CreatePropertyFormData>({
     resolver: zodResolver(createPropertySchema),
   });
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0] ?? null;
-    setFileError(null);
-    if (file) {
-      const err = validateFile(file);
-      if (err) { setFileError(err); setTitleDeed(null); return; }
+    const selected = Array.from(e.target.files ?? []);
+    const errs: string[] = [];
+    const valid: File[] = [];
+    for (const f of selected) {
+      const err = validateFile(f);
+      if (err) errs.push(`${f.name}: ${err}`);
+      else valid.push(f);
     }
-    setTitleDeed(file);
+    setFileErrors(errs);
+    setFiles((prev) => [...prev, ...valid]);
+    e.target.value = '';
+  }
+
+  function removeFile(index: number) {
+    setFiles((prev) => prev.filter((_, i) => i !== index));
   }
 
   async function onSubmit(data: CreatePropertyFormData) {
-    if (!titleDeed) { setFileError('Title deed document is required.'); return; }
     setLoading(true);
     try {
       const formData = new FormData();
       Object.entries(data).forEach(([k, v]) => {
         if (v !== undefined && v !== null && v !== '') formData.append(k, String(v));
       });
-      formData.append('titleDeedFile', titleDeed);
+      files.forEach((f) => formData.append('propertyFiles', f));
 
-      const { property, txid } = await propertyService.register(formData);
-      addTx(txid, 'register-property', property.id, 'Property');
-      toast.success('Property registered! Blockchain confirmation in progress.');
+      const property = await propertyService.submit(formData);
+      toast.success(
+        isRegistrar
+          ? 'Property submitted for review.'
+          : 'Property submitted! The registrar will review and approve your registration.'
+      );
       router.replace(ROUTES.PROPERTY(property.id));
     } catch (err: any) {
-      toast.error(err?.message ?? 'Registration failed.');
+      toast.error(err?.message ?? 'Submission failed.');
     } finally {
       setLoading(false);
     }
@@ -55,9 +67,11 @@ export default function NewPropertyPage() {
   return (
     <div className="max-w-2xl">
       <div className="mb-6">
-        <h2 className="font-display text-xl text-slate-800">Register New Property</h2>
+        <h2 className="font-display text-xl text-slate-800">Register Property</h2>
         <p className="text-slate-500 text-sm mt-0.5">
-          This will create an on-chain record via the BlockLand Clarity contract.
+          {isRegistrar
+            ? 'Submit property details for registrar review and blockchain registration.'
+            : 'Fill in your property details. A registrar will review and approve your registration.'}
         </p>
       </div>
 
@@ -115,17 +129,10 @@ export default function NewPropertyPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="label">Registration Date</label>
-              <input type="date" className={`input ${errors.registrationDate ? 'input-error' : ''}`} {...register('registrationDate')} />
-              {errors.registrationDate && <p className="error-msg">{errors.registrationDate.message}</p>}
-            </div>
-            <div>
-              <label className="label">Owner National ID</label>
-              <input className={`input ${errors.ownerNationalId ? 'input-error' : ''}`} {...register('ownerNationalId')} placeholder="63-123456Z10" />
-              {errors.ownerNationalId && <p className="error-msg">{errors.ownerNationalId.message}</p>}
-            </div>
+          <div>
+            <label className="label">Registration Date</label>
+            <input type="date" className={`input ${errors.registrationDate ? 'input-error' : ''}`} {...register('registrationDate')} />
+            {errors.registrationDate && <p className="error-msg">{errors.registrationDate.message}</p>}
           </div>
 
           <div>
@@ -134,26 +141,50 @@ export default function NewPropertyPage() {
           </div>
         </div>
 
+        {/* File uploads */}
         <div className="card space-y-3">
-          <p className="form-section">Title Deed Document</p>
-          <input
-            type="file"
-            accept=".pdf,.jpg,.jpeg,.png"
-            onChange={handleFileChange}
-            className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4
-                       file:rounded-lg file:border-0 file:text-sm file:font-medium
-                       file:bg-primary file:text-white hover:file:bg-primary-light
-                       file:cursor-pointer cursor-pointer"
-          />
-          {fileError && <p className="error-msg">{fileError}</p>}
-          {titleDeed && <p className="field-hint">Selected: {titleDeed.name} ({(titleDeed.size / 1024).toFixed(0)} KB)</p>}
-          <p className="field-hint">Accepted: PDF, JPG, PNG. Max 5MB. Will be uploaded to IPFS via Pinata.</p>
+          <p className="form-section">Property Documents &amp; Images</p>
+          <p className="text-sm text-slate-500">
+            Upload your title deed, survey diagrams, or property photos. Accepted: PDF, JPG, PNG. Max 5MB each.
+          </p>
+
+          <label className="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-slate-300 rounded-xl p-6 cursor-pointer hover:border-primary transition-colors">
+            <Upload className="w-6 h-6 text-slate-400" />
+            <span className="text-sm text-slate-500">Click to add files</span>
+            <input
+              type="file"
+              multiple
+              accept=".pdf,.jpg,.jpeg,.png"
+              onChange={handleFileChange}
+              className="hidden"
+            />
+          </label>
+
+          {fileErrors.map((err, i) => (
+            <p key={i} className="error-msg">{err}</p>
+          ))}
+
+          {files.length > 0 && (
+            <ul className="space-y-2">
+              {files.map((f, i) => (
+                <li key={i} className="flex items-center justify-between bg-slate-50 rounded-lg px-3 py-2 text-sm">
+                  <span className="text-slate-700 truncate max-w-xs">{f.name}</span>
+                  <div className="flex items-center gap-3 shrink-0">
+                    <span className="text-slate-400 text-xs">{(f.size / 1024).toFixed(0)} KB</span>
+                    <button type="button" onClick={() => removeFile(i)} className="text-slate-400 hover:text-red-500">
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
 
         <div className="flex gap-3">
           <button type="button" onClick={() => router.back()} className="btn-ghost">Cancel</button>
           <button type="submit" disabled={loading} className="btn-primary">
-            {loading ? 'Registering on blockchain…' : 'Register Property'}
+            {loading ? 'Submitting…' : 'Submit for Review'}
           </button>
         </div>
       </form>

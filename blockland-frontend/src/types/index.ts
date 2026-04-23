@@ -18,7 +18,7 @@ export interface AuthTokensResponse {
   user:         AuthUser;
 }
 
-export type PropertyStatus = 'ACTIVE' | 'PENDING_TRANSFER' | 'DISPUTED' | 'INACTIVE';
+export type PropertyStatus = 'PENDING_APPROVAL' | 'ACTIVE' | 'PENDING_TRANSFER' | 'DISPUTED' | 'INACTIVE' | 'DECLINED';
 export type LandSizeUnit   = 'SQM' | 'HECTARE' | 'ACRE';
 export type ZoningType     = 'RESIDENTIAL' | 'COMMERCIAL' | 'AGRICULTURAL' | 'INDUSTRIAL';
 
@@ -34,10 +34,11 @@ export interface Property {
   zoningType:       ZoningType;
   registrationDate: string;
   status:           PropertyStatus;
-  tokenId:          string;
-  blockchainTxHash: string;
-  ipfsHash:         string;
-  notes:            string | null;
+  tokenId:              string | null;
+  blockchainTxHash:     string | null;
+  ipfsHash:             string | null;
+  notes:                string | null;
+  registrationComment:  string | null;
   currentOwnerId:   string;
   createdById:      string;
   currentOwner?:    PublicUser;

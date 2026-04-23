@@ -8,10 +8,12 @@ export enum UserRole {
 }
 
 export enum PropertyStatus {
+  PENDING_APPROVAL = 'PENDING_APPROVAL',
   ACTIVE           = 'ACTIVE',
   PENDING_TRANSFER = 'PENDING_TRANSFER',
   DISPUTED         = 'DISPUTED',
   INACTIVE         = 'INACTIVE',
+  DECLINED         = 'DECLINED',
 }
 
 export enum LandSizeUnit {

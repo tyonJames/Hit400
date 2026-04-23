@@ -51,7 +51,7 @@ export const SIDEBAR_NAV: NavItem[] = [
     children: [
       { label: 'All Properties',    href: ROUTES.PROPERTIES,  icon: 'List',      roles: ['REGISTRAR', 'ADMIN'] },
       { label: 'My Portfolio',      href: ROUTES.PROPERTIES,  icon: 'Briefcase', roles: ['USER'] },
-      { label: 'Register Property', href: ROUTES.NEW_PROPERTY,icon: 'FilePlus',  roles: ['REGISTRAR'] },
+      { label: 'Register Property', href: ROUTES.NEW_PROPERTY,icon: 'FilePlus',  roles: ['REGISTRAR', 'USER'] },
     ],
   },
   {
@@ -85,6 +85,6 @@ export const SIDEBAR_NAV: NavItem[] = [
 
 export function canAccessRoute(path: string, userRoles: UserRole[]): boolean {
   if (path.startsWith('/admin') && !userRoles.includes('ADMIN')) return false;
-  if (path === ROUTES.NEW_PROPERTY && !userRoles.includes('REGISTRAR')) return false;
+  if (path === ROUTES.NEW_PROPERTY && !userRoles.includes('REGISTRAR') && !userRoles.includes('USER')) return false;
   return true;
 }

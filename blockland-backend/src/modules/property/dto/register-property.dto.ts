@@ -1,5 +1,5 @@
 import {
-  IsString, IsUUID, IsEnum, IsNumber, IsOptional, IsDateString, Min, MaxLength,
+  IsString, IsEnum, IsNumber, IsOptional, IsDateString, Min, MaxLength,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { ZoningType, LandSizeUnit } from '../../../database/enums';
@@ -36,10 +36,6 @@ export class RegisterPropertyDto {
   @ApiProperty({ example: '2024-01-15' })
   @IsDateString()
   registrationDate: string;
-
-  @ApiProperty({ description: 'UUID of the new property owner (user)' })
-  @IsUUID()
-  ownerId: string;
 
   @ApiPropertyOptional()
   @IsOptional()

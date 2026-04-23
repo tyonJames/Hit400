@@ -1,11 +1,12 @@
 import {
-  Controller, Get, Post, Param, Query, Body,
-  UseInterceptors, UploadedFile,
+  Controller, Get, Post, Patch, Param, Query, Body,
+  UseInterceptors, UploadedFiles,
 } from '@nestjs/common';
-import { FileInterceptor }   from '@nestjs/platform-express';
+import { FilesInterceptor }  from '@nestjs/platform-express';
 import { ApiTags, ApiBearerAuth, ApiConsumes } from '@nestjs/swagger';
 import { PropertyService }      from './property.service';
 import { RegisterPropertyDto }  from './dto/register-property.dto';
+import { DeclinePropertyDto }   from './dto/decline-property.dto';
 import { CurrentUser }          from '../../common/decorators/current-user.decorator';
 import { Roles }                from '../../common/decorators/roles.decorator';
 import { UserRole, PropertyStatus } from '../../database/enums';
@@ -18,17 +19,34 @@ export class PropertyController {
   constructor(private readonly propertyService: PropertyService) {}
 
   @Post()
-  @Roles(UserRole.REGISTRAR, UserRole.ADMIN)
+  @Roles(UserRole.USER, UserRole.REGISTRAR, UserRole.ADMIN)
   @ApiConsumes('multipart/form-data')
-  @UseInterceptors(FileInterceptor('titleDeedFile'))
-  register(
+  @UseInterceptors(FilesInterceptor('propertyFiles', 10))
+  submit(
     @Body() dto: RegisterPropertyDto,
     @CurrentUser() user: JwtPayload,
-    @UploadedFile() file: Express.Multer.File,
+    @UploadedFiles() files: Express.Multer.File[],
   ) {
-    // In production, upload the file to IPFS first; here we use a placeholder
-    const ipfsHash = file ? `ipfs-${Date.now()}` : 'ipfs-placeholder';
-    return this.propertyService.register(dto, ipfsHash, user);
+    return this.propertyService.submit(dto, files ?? [], user);
+  }
+
+  @Patch(':id/approve')
+  @Roles(UserRole.REGISTRAR, UserRole.ADMIN)
+  approve(
+    @Param('id') id: string,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    return this.propertyService.approve(id, user);
+  }
+
+  @Patch(':id/decline')
+  @Roles(UserRole.REGISTRAR, UserRole.ADMIN)
+  decline(
+    @Param('id') id: string,
+    @Body() dto: DeclinePropertyDto,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    return this.propertyService.decline(id, dto.comment, user);
   }
 
   @Get()

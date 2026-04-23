@@ -47,8 +47,14 @@ export const userService = {
 };
 
 export const propertyService = {
-  register: (formData: FormData) =>
-    api.upload<{ property: Property; txid: string }>('/properties', formData),
+  submit: (formData: FormData) =>
+    api.upload<Property>('/properties', formData),
+
+  approve: (id: string) =>
+    api.patch<Property>(`/properties/${id}/approve`, {}),
+
+  decline: (id: string, comment: string) =>
+    api.patch<Property>(`/properties/${id}/decline`, { comment }),
 
   list: (params?: {
     page?: number; limit?: number; status?: string;

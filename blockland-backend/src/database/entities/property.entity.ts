@@ -49,20 +49,23 @@ export class Property extends BaseEntity {
   @Column({ name: 'registration_date', type: 'date' })
   registrationDate: string;
 
-  @Column({ name: 'status', type: 'enum', enum: PropertyStatus, default: PropertyStatus.ACTIVE })
+  @Column({ name: 'status', type: 'enum', enum: PropertyStatus, default: PropertyStatus.PENDING_APPROVAL })
   status: PropertyStatus;
 
-  @Column({ name: 'token_id', type: 'varchar', length: 100 })
-  tokenId: string;
+  @Column({ name: 'token_id', type: 'varchar', length: 100, nullable: true })
+  tokenId: string | null;
 
-  @Column({ name: 'blockchain_tx_hash', type: 'varchar', length: 100 })
-  blockchainTxHash: string;
+  @Column({ name: 'blockchain_tx_hash', type: 'varchar', length: 100, nullable: true })
+  blockchainTxHash: string | null;
 
-  @Column({ name: 'ipfs_hash', type: 'varchar', length: 100 })
-  ipfsHash: string;
+  @Column({ name: 'ipfs_hash', type: 'varchar', length: 100, nullable: true })
+  ipfsHash: string | null;
 
   @Column({ name: 'notes', type: 'varchar', length: 500, nullable: true })
   notes: string | null;
+
+  @Column({ name: 'registration_comment', type: 'varchar', length: 500, nullable: true })
+  registrationComment: string | null;
 
   @Column({ name: 'current_owner_id', type: 'uuid' })
   currentOwnerId: string;
