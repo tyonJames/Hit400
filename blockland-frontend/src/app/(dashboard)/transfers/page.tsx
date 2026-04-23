@@ -12,8 +12,7 @@ import type { Transfer, PaginatedResponse } from '@/types';
 export default function TransfersPage() {
   const isRegistrar = useAuthStore((s) => s.isRegistrar());
   const isAdmin     = useAuthStore((s) => s.isAdmin());
-  const isOwner     = useAuthStore((s) => s.isOwner());
-  const isBuyer     = useAuthStore((s) => s.isBuyer());
+  const isUser      = useAuthStore((s) => s.isUser());
 
   const [data, setData]       = useState<PaginatedResponse<Transfer> | null>(null);
   const [loading, setLoading] = useState(true);
@@ -32,7 +31,7 @@ export default function TransfersPage() {
           <h2 className="font-display text-xl text-slate-800">Transfers</h2>
           <p className="text-slate-500 text-sm mt-0.5">{data?.total ?? 0} total transfers</p>
         </div>
-        {isOwner && (
+        {isUser && (
           <Link href={ROUTES.NEW_TRANSFER} className="btn-primary">
             <Plus className="w-4 h-4" /> Initiate Transfer
           </Link>

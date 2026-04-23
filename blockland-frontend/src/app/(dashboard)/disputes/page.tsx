@@ -12,7 +12,7 @@ import type { Dispute, PaginatedResponse } from '@/types';
 export default function DisputesPage() {
   const isRegistrar = useAuthStore((s) => s.isRegistrar());
   const isAdmin     = useAuthStore((s) => s.isAdmin());
-  const isOwner     = useAuthStore((s) => s.isOwner());
+  const isUser      = useAuthStore((s) => s.isUser());
 
   const [data, setData]       = useState<PaginatedResponse<Dispute> | null>(null);
   const [loading, setLoading] = useState(true);
@@ -34,7 +34,7 @@ export default function DisputesPage() {
           <h2 className="font-display text-xl text-slate-800">Disputes</h2>
           <p className="text-slate-500 text-sm mt-0.5">{data?.total ?? 0} total disputes</p>
         </div>
-        {(isOwner || isRegistrar) && (
+        {(isUser || isRegistrar) && (
           <Link href={ROUTES.NEW_DISPUTE} className="btn-primary">
             <Plus className="w-4 h-4" /> Raise Dispute
           </Link>

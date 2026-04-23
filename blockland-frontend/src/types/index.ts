@@ -2,7 +2,7 @@
 // src/types/index.ts — BlockLand Zimbabwe Shared TypeScript Types
 // =============================================================================
 
-export type UserRole = 'REGISTRAR' | 'OWNER' | 'BUYER' | 'PUBLIC' | 'ADMIN';
+export type UserRole = 'REGISTRAR' | 'USER' | 'PUBLIC' | 'ADMIN';
 
 export interface AuthUser {
   id:            string;

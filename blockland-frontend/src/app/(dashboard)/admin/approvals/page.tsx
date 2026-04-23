@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { adminService, type PendingUser } from '@/lib/api/services';
 
-const ALL_ROLES = ['OWNER', 'BUYER', 'REGISTRAR', 'ADMIN'] as const;
+const ALL_ROLES = ['USER', 'REGISTRAR', 'ADMIN'] as const;
 type RoleName = typeof ALL_ROLES[number];
 
 export default function PendingApprovalsPage() {

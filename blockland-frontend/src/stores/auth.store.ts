@@ -21,8 +21,7 @@ interface AuthState {
   isAuthenticated: () => boolean;
   isRegistrar:     () => boolean;
   isAdmin:         () => boolean;
-  isOwner:         () => boolean;
-  isBuyer:         () => boolean;
+  isUser:          () => boolean;
   hasRole:         (role: AuthUser['roles'][number]) => boolean;
   primaryRole:     () => AuthUser['roles'][number] | null;
 }
@@ -73,15 +72,13 @@ export const useAuthStore = create<AuthState>()(
       hasRole:         (role) => get().user?.roles.includes(role) ?? false,
       isRegistrar:     () => get().user?.roles.includes('REGISTRAR') ?? false,
       isAdmin:         () => get().user?.roles.includes('ADMIN') ?? false,
-      isOwner:         () => get().user?.roles.includes('OWNER') ?? false,
-      isBuyer:         () => get().user?.roles.includes('BUYER') ?? false,
+      isUser:          () => get().user?.roles.includes('USER') ?? false,
 
       primaryRole: () => {
         const roles = get().user?.roles ?? [];
         if (roles.includes('ADMIN'))     return 'ADMIN';
         if (roles.includes('REGISTRAR')) return 'REGISTRAR';
-        if (roles.includes('OWNER'))     return 'OWNER';
-        if (roles.includes('BUYER'))     return 'BUYER';
+        if (roles.includes('USER'))      return 'USER';
         if (roles.includes('PUBLIC'))    return 'PUBLIC';
         return null;
       },

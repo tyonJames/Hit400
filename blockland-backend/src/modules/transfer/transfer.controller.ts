@@ -16,7 +16,7 @@ export class TransferController {
   constructor(private readonly transferService: TransferService) {}
 
   @Post()
-  @Roles(UserRole.OWNER)
+  @Roles(UserRole.USER)
   initiate(@Body() dto: CreateTransferDto, @CurrentUser() user: JwtPayload) {
     return this.transferService.initiate(dto, user);
   }

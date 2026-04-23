@@ -2,8 +2,7 @@
 
 export enum UserRole {
   REGISTRAR = 'REGISTRAR',
-  OWNER     = 'OWNER',
-  BUYER     = 'BUYER',
+  USER      = 'USER',
   PUBLIC    = 'PUBLIC',
   ADMIN     = 'ADMIN',
 }

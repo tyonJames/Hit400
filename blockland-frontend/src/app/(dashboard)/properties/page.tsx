@@ -11,7 +11,7 @@ import type { Property, PaginatedResponse } from '@/types';
 
 export default function PropertiesPage() {
   const isRegistrar = useAuthStore((s) => s.isRegistrar());
-  const isOwner     = useAuthStore((s) => s.isOwner());
+  const isUser      = useAuthStore((s) => s.isUser());
   const user        = useAuthStore((s) => s.user);
 
   const [data, setData]       = useState<PaginatedResponse<Property> | null>(null);
@@ -19,7 +19,7 @@ export default function PropertiesPage() {
   const [search, setSearch]   = useState('');
 
   useEffect(() => {
-    if (isOwner && !isRegistrar) {
+    if (isUser && !isRegistrar) {
       propertyService.getByOwner(user!.id)
         .then(setData)
         .finally(() => setLoading(false));
@@ -35,7 +35,7 @@ export default function PropertiesPage() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="font-display text-xl text-slate-800">
-            {isOwner && !isRegistrar ? 'My Portfolio' : 'All Properties'}
+            {isUser && !isRegistrar ? 'My Portfolio' : 'All Properties'}
           </h2>
           <p className="text-slate-500 text-sm mt-0.5">
             {data?.total ?? 0} properties registered
@@ -49,7 +49,7 @@ export default function PropertiesPage() {
       </div>
 
       {/* Search */}
-      {!isOwner && (
+      {!isUser && (
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input
