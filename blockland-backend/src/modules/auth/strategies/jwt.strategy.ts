@@ -36,6 +36,6 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     if (!user) throw new UnauthorizedException('User not found or deactivated.');
 
     const roles = user.userRoles.map((ur) => ur.role.name);
-    return { id: user.id, email: user.email, roles, walletAddress: user.walletAddress };
+    return { sub: user.id, id: user.id, email: user.email, roles, walletAddress: user.walletAddress };
   }
 }

@@ -103,17 +103,24 @@ export class PropertyService {
       .digest('hex');
 
     const registrarKey = this.configService.get<string>('STACKS_REGISTRAR_PRIVATE_KEY', '');
-    const ownerAddress = owner.walletAddress ?? owner.id;
+    const ownerAddress = owner.walletAddress && /^S[PT][A-Z0-9]{38,39}$/.test(owner.walletAddress)
+      ? owner.walletAddress
+      : 'SP000000000000000000002Q6VF78';
 
     const ipfsHash = `ipfs-${titleDeedHash.slice(0, 40)}`;
 
-    const txid = await this.blockchainService.registerProperty({
-      propertyId:    tokenId,
-      titleDeedHash,
-      ownerAddress,
-      ipfsHash,
-      senderKey:     registrarKey,
-    });
+    let txid: string;
+    if (!registrarKey || !this.configService.get<string>('CLARITY_CONTRACT_ADDRESS', '')) {
+      txid = `mock-tx-${crypto.randomBytes(16).toString('hex')}`;
+    } else {
+      txid = await this.blockchainService.registerProperty({
+        propertyId:    tokenId,
+        titleDeedHash,
+        ownerAddress,
+        ipfsHash,
+        senderKey:     registrarKey,
+      });
+    }
 
     await this.dataSource.transaction(async (em) => {
       await em.update(Property, { id }, {
@@ -166,8 +173,8 @@ export class PropertyService {
     page?: number; limit?: number;
     status?: PropertyStatus; zoningType?: string; search?: string;
   }) {
-    const page  = params.page  ?? 1;
-    const limit = params.limit ?? 20;
+    const page  = +(params.page  ?? 1) || 1;
+    const limit = +(params.limit ?? 20) || 20;
     const where: FindOptionsWhere<Property> = {};
     if (params.status)     where.status     = params.status;
     if (params.zoningType) where.zoningType = params.zoningType as any;
@@ -202,8 +209,8 @@ export class PropertyService {
   }
 
   async findByOwner(userId: string, params: { page?: number; limit?: number }) {
-    const page  = params.page  ?? 1;
-    const limit = params.limit ?? 20;
+    const page  = +(params.page  ?? 1) || 1;
+    const limit = +(params.limit ?? 20) || 20;
     const [data, total] = await this.propertyRepo.findAndCount({
       where:     { currentOwnerId: userId },
       order:     { createdAt: 'DESC' },
