@@ -1,0 +1,238 @@
+---
+title: BlockLand Zimbabwe — Database Entity Relationship Diagram
+---
+erDiagram
+
+    %% ==========================================================================
+    %% CORE USER & ACCESS TABLES
+    %% ==========================================================================
+
+    users {
+        uuid        id              PK
+        string      full_name
+        string      national_id     UK
+        string      email           UK
+        string      phone
+        string      password_hash
+        string      wallet_address
+        boolean     is_active
+        timestamp   created_at
+        timestamp   updated_at
+    }
+
+    roles {
+        uuid        id              PK
+        enum        name            UK
+        string      description
+        timestamp   created_at
+        timestamp   updated_at
+    }
+
+    user_roles {
+        uuid        user_id         PK,FK
+        uuid        role_id         PK,FK
+        timestamp   assigned_at
+    }
+
+    auth_tokens {
+        uuid        id              PK
+        uuid        user_id         FK
+        string      token_hash
+        timestamp   expires_at
+        boolean     revoked
+        string      ip_address
+        timestamp   created_at
+        timestamp   updated_at
+    }
+
+    %% ==========================================================================
+    %% PROPERTY TABLES
+    %% ==========================================================================
+
+    properties {
+        uuid        id              PK
+        string      plot_number     UK
+        string      title_deed_number UK
+        string      address
+        decimal     gps_lat
+        decimal     gps_lng
+        decimal     land_size
+        enum        unit
+        enum        zoning_type
+        date        registration_date
+        enum        status
+        string      token_id        UK
+        string      blockchain_tx_hash
+        string      ipfs_hash
+        string      notes
+        uuid        current_owner_id FK
+        uuid        created_by      FK
+        timestamp   created_at
+        timestamp   updated_at
+    }
+
+    property_documents {
+        uuid        id              PK
+        uuid        property_id     FK
+        uuid        uploaded_by     FK
+        string      file_name
+        enum        file_type
+        int         file_size_bytes
+        string      ipfs_hash
+        string      file_hash
+        timestamp   uploaded_at
+    }
+
+    %% ==========================================================================
+    %% OWNERSHIP TABLE
+    %% ==========================================================================
+
+    ownership_records {
+        uuid        id              PK
+        uuid        property_id     FK
+        uuid        owner_id        FK
+        uuid        transfer_id     FK
+        timestamp   acquired_at
+        timestamp   released_at
+        enum        acquisition_type
+        string      blockchain_tx_hash
+        timestamp   created_at
+        timestamp   updated_at
+    }
+
+    %% ==========================================================================
+    %% TRANSFER TABLES
+    %% ==========================================================================
+
+    transfers {
+        uuid        id              PK
+        uuid        property_id     FK
+        uuid        seller_id       FK
+        uuid        buyer_id        FK
+        enum        status
+        timestamp   initiated_at
+        timestamp   confirmed_at
+        timestamp   cancelled_at
+        decimal     sale_value
+        string      blockchain_tx_hash
+        string      notes
+        timestamp   created_at
+        timestamp   updated_at
+    }
+
+    transfer_approvals {
+        uuid        id              PK
+        uuid        transfer_id     FK
+        uuid        approved_by     FK
+        enum        approver_role
+        timestamp   approved_at
+        enum        action
+        string      notes
+        timestamp   created_at
+        timestamp   updated_at
+    }
+
+    %% ==========================================================================
+    %% DISPUTE TABLES
+    %% ==========================================================================
+
+    disputes {
+        uuid        id              PK
+        uuid        property_id     FK
+        uuid        raised_by       FK
+        enum        dispute_type
+        text        description
+        enum        status
+        timestamp   raised_at
+        timestamp   resolved_at
+        string      blockchain_tx_hash
+        timestamp   created_at
+        timestamp   updated_at
+    }
+
+    dispute_evidence {
+        uuid        id              PK
+        uuid        dispute_id      FK
+        uuid        uploaded_by     FK
+        string      file_name
+        enum        file_type
+        int         file_size_bytes
+        string      ipfs_hash
+        string      file_hash
+        timestamp   uploaded_at
+    }
+
+    dispute_resolutions {
+        uuid        id              PK
+        uuid        dispute_id      FK,UK
+        uuid        resolved_by     FK
+        text        resolution_notes
+        timestamp   resolved_at
+        string      blockchain_tx_hash
+    }
+
+    %% ==========================================================================
+    %% SYSTEM / AUDIT TABLES
+    %% ==========================================================================
+
+    verification_logs {
+        uuid        id              PK
+        enum        query_type
+        string      query_value
+        enum        result_status
+        timestamp   queried_at
+        string      ip_address
+    }
+
+    activity_logs {
+        uuid        id              PK
+        uuid        user_id         FK
+        string      action
+        string      entity_type
+        uuid        entity_id
+        jsonb       metadata
+        timestamp   performed_at
+    }
+
+    %% ==========================================================================
+    %% RELATIONSHIPS
+    %% Crow's foot notation:
+    %%   ||--o{  = one to zero-or-many
+    %%   ||--|{  = one to one-or-many
+    %%   ||--||  = one to exactly one
+    %%   }|--|{  = many to many (shown via join table)
+    %% ==========================================================================
+
+    %% --- User & Access ---
+    users       ||--o{ user_roles        : "is assigned"
+    roles       ||--o{ user_roles        : "assigned to"
+    users       ||--o{ auth_tokens       : "has refresh tokens"
+
+    %% --- Property Ownership ---
+    users       ||--o{ properties        : "owns (current_owner)"
+    users       ||--o{ properties        : "registered (created_by)"
+    properties  ||--o{ property_documents : "has documents"
+    users       ||--o{ property_documents : "uploaded"
+
+    %% --- Ownership History ---
+    properties  ||--|{ ownership_records  : "has ownership history"
+    users       ||--o{ ownership_records  : "appears as owner"
+    transfers   ||--o{ ownership_records  : "caused by transfer"
+
+    %% --- Transfer Workflow ---
+    properties  ||--o{ transfers          : "has transfers"
+    users       ||--o{ transfers          : "initiated as seller"
+    users       ||--o{ transfers          : "is buyer"
+    transfers   ||--o{ transfer_approvals : "has approval steps"
+    users       ||--o{ transfer_approvals : "approved by"
+
+    %% --- Dispute Management ---
+    properties  ||--o{ disputes           : "has disputes"
+    users       ||--o{ disputes           : "raised by"
+    disputes    ||--o{ dispute_evidence   : "has evidence"
+    users       ||--o{ dispute_evidence   : "uploaded by"
+    disputes    ||--|| dispute_resolutions : "resolved by (1:1)"
+    users       ||--o{ dispute_resolutions : "resolved by registrar"
+
+    %% --- Audit & Logging ---
+    users       ||--o{ activity_logs      : "performed actions"

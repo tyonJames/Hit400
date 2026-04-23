@@ -1,0 +1,49 @@
+# =============================================================================
+# settings/Devnet.toml — Local Development Network Configuration
+# =============================================================================
+# Defines the local simulated Stacks accounts used for development and testing.
+# These principals appear in tests as: accounts.get('deployer'), accounts.get('wallet_1'), etc.
+#
+# In Clarinet v2 simnet (initSimnet()), these accounts are pre-funded with STX
+# and available immediately — no faucet calls needed during testing.
+#
+# Account roles in BlockLand tests:
+#   deployer  → contract owner, can call initialize-registrar / remove-registrar
+#   wallet_1  → land registrar (authorized by deployer)
+#   wallet_2  → property owner / seller
+#   wallet_3  → buyer / new owner
+#   wallet_4  → unauthorized user (for negative tests)
+# =============================================================================
+
+[network]
+name = "devnet"
+stacks_node_rpc_address = "http://localhost:20443"
+bitcoin_node_rpc_address = "http://localhost:18443"
+bitcoin_node_username = "devnet"
+bitcoin_node_password = "devnet"
+
+# ---------------------------------------------------------------------------
+# Pre-funded accounts — these are Clarity principal values in simnet.
+# The 'mnemonic' fields use the standard Clarinet test mnemonics.
+# Each account starts with 100,000,000,000 microSTX (100,000 STX).
+# ---------------------------------------------------------------------------
+
+[accounts.deployer]
+mnemonic = "twice kind fence tip hidden tilt action foxglove rug clip special built"
+balance = 100_000_000_000
+
+[accounts.wallet_1]
+mnemonic = "sell invite acquire kitten bamboo drastic jelly vivid peace spawn twice gateway"
+balance = 100_000_000_000
+
+[accounts.wallet_2]
+mnemonic = "hold excess usual excess ring elephant install account glad dry fragile donkey"
+balance = 100_000_000_000
+
+[accounts.wallet_3]
+mnemonic = "cycle puppy glare enroll cost improve round trend wrist mushroom scorpion tower"
+balance = 100_000_000_000
+
+[accounts.wallet_4]
+mnemonic = "board list obtain sugar hour worth raven solve jaguar both bracket height"
+balance = 100_000_000_000

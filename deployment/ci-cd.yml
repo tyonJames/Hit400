@@ -1,0 +1,247 @@
+# =============================================================================
+# .github/workflows/ci-cd.yml
+# BlockLand Zimbabwe — GitHub Actions CI/CD Pipeline
+# =============================================================================
+#
+# TRIGGERS: Push to main or pull_request to main
+#
+# PIPELINE STAGES:
+#   1. test-contracts  — Clarinet v2 / Vitest contract tests
+#   2. test-backend    — Jest unit + integration tests (NestJS)
+#   3. test-frontend   — Vitest component tests (React)
+#   4. build-backend   — TypeScript compile check
+#   5. deploy-backend  — Railway auto-deploys on push to main via GitHub integration
+#   6. deploy-frontend — Vercel auto-deploys on push to main via GitHub integration
+#
+# SECRETS REQUIRED (set in GitHub → Settings → Secrets and variables → Actions):
+#   RAILWAY_TOKEN       — from Railway account settings
+#   VERCEL_TOKEN        — from Vercel account settings
+#   VERCEL_ORG_ID       — from Vercel project settings
+#   VERCEL_PROJECT_ID   — from Vercel project settings
+# =============================================================================
+
+name: BlockLand CI/CD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  NODE_VERSION: '20'
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # JOB 1: Smart Contract Tests (Clarinet v2 / Vitest)
+  # ---------------------------------------------------------------------------
+  test-contracts:
+    name: Contract tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: blockland-contracts
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: blockland-contracts/package-lock.json
+
+      - name: Install Clarinet CLI
+        run: npm install -g @hirosystems/clarinet@latest
+
+      - name: Install contract test dependencies
+        run: npm ci
+
+      - name: Verify contract compiles
+        run: clarinet check
+
+      - name: Run Clarity contract tests
+        run: npm run test:contracts -- --reporter=verbose
+
+  # ---------------------------------------------------------------------------
+  # JOB 2: NestJS Backend Tests (Jest unit + integration)
+  # ---------------------------------------------------------------------------
+  test-backend:
+    name: Backend tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: blockland-backend
+
+    services:
+      # Lightweight SQLite is used for integration tests (no real PG needed in CI)
+      # See jest.config.ts — integration tests use TEST_DATABASE_URL
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB:       blockland_test
+          POSTGRES_USER:     test_user
+          POSTGRES_PASSWORD: test_pass
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: blockland-backend/package-lock.json
+
+      - name: Install backend dependencies
+        run: npm ci
+
+      - name: Run unit tests with coverage
+        run: npm run test:unit -- --coverage --ci
+        env:
+          NODE_ENV: test
+
+      - name: Run integration tests
+        run: npm run test:integration -- --ci
+        env:
+          NODE_ENV:             test
+          TEST_DATABASE_URL:    postgresql://test_user:test_pass@localhost:5433/blockland_test
+          JWT_PRIVATE_KEY:      ${{ secrets.TEST_JWT_PRIVATE_KEY }}
+          JWT_PUBLIC_KEY:       ${{ secrets.TEST_JWT_PUBLIC_KEY }}
+          STACKS_NETWORK:       testnet
+          STACKS_API_URL:       https://api.testnet.hiro.so
+          CLARITY_CONTRACT_ADDRESS: ST_MOCK.blockland
+          REGISTRAR_MNEMONIC:   test test test test test test test test test test test junk
+          PINATA_API_KEY:       test
+          PINATA_SECRET_API_KEY:test
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage
+          path: blockland-backend/coverage/
+
+  # ---------------------------------------------------------------------------
+  # JOB 3: Frontend Tests (Vitest + React Testing Library)
+  # ---------------------------------------------------------------------------
+  test-frontend:
+    name: Frontend component tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: blockland-frontend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: blockland-frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: TypeScript type check
+        run: npm run typecheck
+
+      - name: Run component tests
+        run: npm run test:components -- --run
+
+  # ---------------------------------------------------------------------------
+  # JOB 4: Build backend (TypeScript compile)
+  # ---------------------------------------------------------------------------
+  build-backend:
+    name: Build backend
+    needs: [test-contracts, test-backend]
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: blockland-backend
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: blockland-backend/package-lock.json
+
+      - name: Install and build
+        run: |
+          npm ci
+          npm run build
+
+      - name: Verify dist/main.js exists
+        run: test -f dist/main.js
+
+  # ---------------------------------------------------------------------------
+  # JOB 5: Deploy to Railway (backend)
+  # Railway auto-deploys from GitHub — this job just runs post-deploy checks
+  # ---------------------------------------------------------------------------
+  deploy-backend:
+    name: Verify backend deployment
+    needs: [build-backend]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Wait for Railway to deploy
+        run: sleep 60  # Railway typically deploys in 30-90 seconds
+
+      - name: Health check — verify /health returns 200
+        run: |
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            https://blockland-api.up.railway.app/health)
+          echo "Health check HTTP status: $STATUS"
+          if [ "$STATUS" != "200" ]; then
+            echo "❌ Health check failed with status $STATUS"
+            exit 1
+          fi
+          echo "✓ Backend is healthy"
+
+      - name: Verify contract address in health response
+        run: |
+          RESPONSE=$(curl -s https://blockland-api.up.railway.app/health)
+          echo "Health response: $RESPONSE"
+          echo "$RESPONSE" | grep -q '"status":"ok"' && echo "✓ Status OK" || exit 1
+
+  # ---------------------------------------------------------------------------
+  # JOB 6: Deploy to Vercel (frontend)
+  # Vercel also auto-deploys from GitHub — this job runs E2E smoke tests
+  # ---------------------------------------------------------------------------
+  deploy-frontend:
+    name: Verify frontend deployment
+    needs: [test-frontend, deploy-backend]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Wait for Vercel to deploy
+        run: sleep 60
+
+      - name: Smoke test — verify frontend loads
+        run: |
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            https://blockland.vercel.app)
+          echo "Frontend HTTP status: $STATUS"
+          if [ "$STATUS" != "200" ]; then
+            echo "❌ Frontend smoke test failed with status $STATUS"
+            exit 1
+          fi
+          echo "✓ Frontend is live"
+
+      - name: Smoke test — public verify portal (no auth)
+        run: |
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            https://blockland.vercel.app/verify)
+          echo "/verify page HTTP status: $STATUS"
+          [ "$STATUS" = "200" ] && echo "✓ Verify portal is accessible" || exit 1

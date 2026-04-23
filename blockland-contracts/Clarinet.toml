@@ -1,0 +1,40 @@
+# =============================================================================
+# Clarinet.toml — BlockLand Zimbabwe Clarinet Project Manifest
+# =============================================================================
+# This file tells Clarinet v2 which contracts belong to this project,
+# which Clarity version to use, and which Stacks epoch to target.
+#
+# Clarity version 2 is required — it introduced:
+#   - (concat), (as-max-len?), improved type inference
+#   - Trait definitions and implementation checks
+#   - This project uses Clarity 2 throughout
+#
+# Epoch 2.5 matches the current Stacks Testnet (Nakamoto upgrade era).
+# Deploying to testnet requires epoch = "2.5" to be accepted by nodes.
+# =============================================================================
+
+[project]
+name = "blockland"
+description = "BlockLand Zimbabwe — Blockchain-based Land Administration System"
+authors = ["Tinotenda James"]
+telemetry = false
+
+# ---------------------------------------------------------------------------
+# Contract Definitions
+# ---------------------------------------------------------------------------
+# Each [contracts.<name>] section registers one .clar file with Clarinet.
+# The name here ("blockland") is the contract name used when calling functions:
+#   (contract-call? .blockland register-property ...)
+# ---------------------------------------------------------------------------
+
+[contracts.blockland]
+path = "contracts/blockland.clar"
+clarity_version = 2
+epoch = "2.5"
+
+# ---------------------------------------------------------------------------
+# REPL Settings — used when running `clarinet console`
+# ---------------------------------------------------------------------------
+[repl]
+costs_version = 2
+parser_version = 2

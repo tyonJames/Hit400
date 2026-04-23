@@ -1,0 +1,47 @@
+{
+  "framework": "nextjs",
+  "buildCommand": "npm run build",
+  "outputDirectory": ".next",
+  "installCommand": "npm ci",
+  "devCommand": "npm run dev",
+
+  "env": {
+    "NEXT_PUBLIC_API_URL": "@blockland-api-url",
+    "NEXT_PUBLIC_STACKS_NETWORK": "testnet",
+    "NEXT_PUBLIC_CONTRACT_ADDRESS": "@blockland-contract-address",
+    "NEXT_PUBLIC_CONTRACT_NAME": "blockland",
+    "NEXT_PUBLIC_STACKS_EXPLORER": "https://explorer.hiro.so",
+    "NEXT_PUBLIC_IPFS_GATEWAY": "https://gateway.pinata.cloud"
+  },
+
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        },
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        },
+        {
+          "key": "Permissions-Policy",
+          "value": "camera=(), microphone=(), geolocation=()"
+        }
+      ]
+    }
+  ],
+
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://blockland-api.up.railway.app/api/:path*"
+    }
+  ]
+}

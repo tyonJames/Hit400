@@ -1,0 +1,17 @@
+{
+  "folders": [
+    { "name": "Contracts",  "path": "./blockland-contracts" },
+    { "name": "Backend",    "path": "./blockland-backend"  },
+    { "name": "Frontend",   "path": "./blockland-frontend" },
+    { "name": "Root",       "path": "."                    }
+  ],
+  "settings": {
+    "typescript.tsdk": "blockland-backend/node_modules/typescript/lib",
+    "editor.formatOnSave": true,
+    "files.exclude": {
+      "**/node_modules": true,
+      "**/.next": true,
+      "**/dist": true
+    }
+  }
+}

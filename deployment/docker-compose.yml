@@ -1,0 +1,99 @@
+# =============================================================================
+# docker-compose.yml — BlockLand Zimbabwe Local Development Stack
+# =============================================================================
+#
+# Runs all services locally for development and testing.
+# For dissertation demo, use Vercel + Railway instead of this file.
+#
+# START:   docker compose up --build
+# STOP:    docker compose down
+# RESET:   docker compose down -v  (clears PostgreSQL data)
+#
+# After first start, run migrations:
+#   docker compose exec api npm run migration:run
+#   docker compose exec api npx ts-node scripts/seed.ts
+# =============================================================================
+
+version: '3.9'
+
+services:
+  # ---------------------------------------------------------------------------
+  # PostgreSQL Database
+  # ---------------------------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB:       blockland
+      POSTGRES_USER:     blockland_user
+      POSTGRES_PASSWORD: blockland_pass
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U blockland_user -d blockland']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ---------------------------------------------------------------------------
+  # NestJS Backend API
+  # ---------------------------------------------------------------------------
+  api:
+    build:
+      context: ./blockland-backend
+      dockerfile: Dockerfile
+      target: development
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV:               development
+      PORT:                   3001
+      DATABASE_URL:           postgresql://blockland_user:blockland_pass@postgres:5432/blockland
+      FRONTEND_URL:           http://localhost:3000
+      STACKS_NETWORK:         testnet
+      STACKS_API_URL:         https://api.testnet.hiro.so
+      CLARITY_CONTRACT_ADDRESS: ${CLARITY_CONTRACT_ADDRESS}
+      REGISTRAR_MNEMONIC:    ${REGISTRAR_MNEMONIC}
+      JWT_PRIVATE_KEY:        ${JWT_PRIVATE_KEY}
+      JWT_PUBLIC_KEY:         ${JWT_PUBLIC_KEY}
+      JWT_ACCESS_EXPIRES_IN:  15m
+      JWT_REFRESH_EXPIRES_IN: 7d
+      PINATA_API_KEY:         ${PINATA_API_KEY}
+      PINATA_SECRET_API_KEY:  ${PINATA_SECRET_API_KEY}
+      PINATA_GATEWAY_URL:     https://gateway.pinata.cloud
+    ports:
+      - '3001:3001'
+    volumes:
+      - ./blockland-backend/src:/app/src    # hot reload in development
+    command: npm run start:dev
+
+  # ---------------------------------------------------------------------------
+  # Next.js Frontend
+  # ---------------------------------------------------------------------------
+  frontend:
+    build:
+      context: ./blockland-frontend
+      dockerfile: Dockerfile
+      target: development
+    restart: unless-stopped
+    depends_on:
+      - api
+    environment:
+      NEXT_PUBLIC_API_URL:           http://localhost:3001/api/v1
+      NEXT_PUBLIC_STACKS_NETWORK:    testnet
+      NEXT_PUBLIC_CONTRACT_ADDRESS:  ${CLARITY_CONTRACT_ADDRESS}
+      NEXT_PUBLIC_CONTRACT_NAME:     blockland
+      NEXT_PUBLIC_STACKS_EXPLORER:   https://explorer.hiro.so
+      NEXT_PUBLIC_IPFS_GATEWAY:      https://gateway.pinata.cloud
+    ports:
+      - '3000:3000'
+    volumes:
+      - ./blockland-frontend/src:/app/src  # hot reload
+
+volumes:
+  postgres_data:
+    driver: local

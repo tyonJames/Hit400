@@ -1,0 +1,18 @@
+{
+  "name": "blockland-contracts",
+  "version": "1.0.0",
+  "description": "BlockLand Zimbabwe — Clarity Smart Contract Test Suite",
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:ui": "vitest --ui",
+    "check": "clarinet check"
+  },
+  "devDependencies": {
+    "@hirosystems/clarinet-sdk": "^2.3.0",
+    "@stacks/transactions": "^6.13.0",
+    "@vitest/coverage-v8": "^1.0.0",
+    "vitest": "^1.0.0"
+  }
+}
