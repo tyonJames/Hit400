@@ -20,8 +20,11 @@ async function bootstrap() {
   app.use(helmet());
 
   const frontendUrl = configService.get<string>('FRONTEND_URL', 'http://localhost:3000');
+  const isDev = configService.get<string>('NODE_ENV') !== 'production';
   app.enableCors({
-    origin: frontendUrl,
+    origin: isDev
+      ? (origin, cb) => cb(null, !origin || /^http:\/\/localhost(:\d+)?$/.test(origin))
+      : frontendUrl,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Refresh-Token'],
     credentials: true,
