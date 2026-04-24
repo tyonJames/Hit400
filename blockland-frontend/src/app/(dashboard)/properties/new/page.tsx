@@ -11,7 +11,14 @@ import { propertyService } from '@/lib/api/services';
 import { useAuthStore }    from '@/stores/auth.store';
 import { ROUTES }          from '@/lib/navigation';
 
-type FileSlot = 'images' | 'titleDeed' | 'surveyDiagram' | 'buildingPlan' | 'otherDocs';
+type FileSlot =
+  | 'images'
+  | 'titleDeed'
+  | 'surveyDiagram'
+  | 'buildingPlan'
+  | 'deedOfTransfer'
+  | 'taxClearance'
+  | 'landDisputeAffidavit';
 
 interface UploadSlot {
   slot:     FileSlot;
@@ -26,42 +33,58 @@ const UPLOAD_SLOTS: UploadSlot[] = [
   {
     slot:     'images',
     label:    'Property Photos',
-    hint:     'Upload photos of the property (JPG, PNG). Up to 10 images.',
+    hint:     'Photos of the property (JPG, PNG). Up to 10 images.',
     icon:     <Image className="w-5 h-5 text-slate-400" />,
     multiple: true,
     maxCount: 10,
   },
   {
     slot:     'titleDeed',
-    label:    'Title Deed',
-    hint:     'Official title deed document (PDF, JPG, PNG). 1 file.',
+    label:    'Title Deed — Certificate of Registered Title',
+    hint:     'Official certificate of registered title (PDF, JPG, PNG).',
     icon:     <FileCheck className="w-5 h-5 text-slate-400" />,
     multiple: false,
     maxCount: 1,
   },
   {
     slot:     'surveyDiagram',
-    label:    'Survey Diagram',
-    hint:     'Cadastral or survey diagram (PDF, JPG, PNG). 1 file.',
+    label:    'Survey Diagram — Surveyor-General\'s Office',
+    hint:     'Cadastral survey diagram issued by the Surveyor-General (PDF, JPG, PNG).',
     icon:     <FileText className="w-5 h-5 text-slate-400" />,
     multiple: false,
     maxCount: 1,
   },
   {
     slot:     'buildingPlan',
-    label:    'Building Plan',
-    hint:     'Approved building plan or floor plan (PDF, JPG, PNG). 1 file.',
+    label:    'Building Plan Approval Certificate',
+    hint:     'Approved building plan or council approval certificate (PDF, JPG, PNG).',
     icon:     <FileStack className="w-5 h-5 text-slate-400" />,
     multiple: false,
     maxCount: 1,
   },
   {
-    slot:     'otherDocs',
-    label:    'Other Documents',
-    hint:     'Any other supporting documents (PDF, JPG, PNG). Up to 5 files.',
+    slot:     'deedOfTransfer',
+    label:    'Deed of Transfer',
+    hint:     'Deed of transfer from the previous owner (PDF, JPG, PNG).',
     icon:     <Paperclip className="w-5 h-5 text-slate-400" />,
-    multiple: true,
-    maxCount: 5,
+    multiple: false,
+    maxCount: 1,
+  },
+  {
+    slot:     'taxClearance',
+    label:    'ZIMRA Tax Clearance Certificate',
+    hint:     'Zimbabwe Revenue Authority tax clearance certificate (PDF, JPG, PNG).',
+    icon:     <FileCheck className="w-5 h-5 text-emerald-400" />,
+    multiple: false,
+    maxCount: 1,
+  },
+  {
+    slot:     'landDisputeAffidavit',
+    label:    'Land Dispute Affidavit',
+    hint:     'Sworn affidavit confirming no active land disputes (PDF, JPG, PNG).',
+    icon:     <FileText className="w-5 h-5 text-slate-400" />,
+    multiple: false,
+    maxCount: 1,
   },
 ];
 
@@ -71,10 +94,12 @@ export default function NewPropertyPage() {
 
   const [loading, setLoading] = useState(false);
   const [fileMap, setFileMap] = useState<Record<FileSlot, File[]>>({
-    images: [], titleDeed: [], surveyDiagram: [], buildingPlan: [], otherDocs: [],
+    images: [], titleDeed: [], surveyDiagram: [], buildingPlan: [],
+    deedOfTransfer: [], taxClearance: [], landDisputeAffidavit: [],
   });
   const [fileErrors, setFileErrors] = useState<Record<FileSlot, string[]>>({
-    images: [], titleDeed: [], surveyDiagram: [], buildingPlan: [], otherDocs: [],
+    images: [], titleDeed: [], surveyDiagram: [], buildingPlan: [],
+    deedOfTransfer: [], taxClearance: [], landDisputeAffidavit: [],
   });
 
   const { register, handleSubmit, formState: { errors } } = useForm<CreatePropertyFormData>({
@@ -93,7 +118,7 @@ export default function NewPropertyPage() {
 
     setFileErrors((prev) => ({ ...prev, [slot]: errs }));
     setFileMap((prev) => {
-      const next = slot === 'titleDeed' || slot === 'surveyDiagram' || slot === 'buildingPlan'
+      const next = maxCount === 1
         ? valid.slice(0, 1)
         : [...prev[slot], ...valid].slice(0, maxCount);
       return { ...prev, [slot]: next };
@@ -113,11 +138,13 @@ export default function NewPropertyPage() {
         if (v !== undefined && v !== null && v !== '') formData.append(k, String(v));
       });
 
-      fileMap.images.forEach((f)        => formData.append('images',        f));
-      fileMap.titleDeed.forEach((f)     => formData.append('titleDeed',     f));
-      fileMap.surveyDiagram.forEach((f) => formData.append('surveyDiagram', f));
-      fileMap.buildingPlan.forEach((f)  => formData.append('buildingPlan',  f));
-      fileMap.otherDocs.forEach((f)     => formData.append('otherDocs',     f));
+      fileMap.images.forEach((f)               => formData.append('images',               f));
+      fileMap.titleDeed.forEach((f)            => formData.append('titleDeed',            f));
+      fileMap.surveyDiagram.forEach((f)        => formData.append('surveyDiagram',        f));
+      fileMap.buildingPlan.forEach((f)         => formData.append('buildingPlan',         f));
+      fileMap.deedOfTransfer.forEach((f)       => formData.append('deedOfTransfer',       f));
+      fileMap.taxClearance.forEach((f)         => formData.append('taxClearance',         f));
+      fileMap.landDisputeAffidavit.forEach((f) => formData.append('landDisputeAffidavit', f));
 
       const property = await propertyService.submit(formData);
       toast.success(

@@ -36,7 +36,7 @@ export class PropertyDocument {
   @Column({ name: 'category', type: 'enum', enum: DocumentCategory, default: DocumentCategory.DOCUMENT })
   category: DocumentCategory;
 
-  @Column({ name: 'document_type', type: 'enum', enum: DocumentType, default: DocumentType.OTHER })
+  @Column({ name: 'document_type', type: 'enum', enum: DocumentType, default: DocumentType.PHOTO })
   documentType: DocumentType;
 
   @Column({ name: 'file_size_bytes', type: 'integer' })

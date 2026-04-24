@@ -53,7 +53,14 @@ export interface Property {
 }
 
 export type DocumentCategory = 'IMAGE' | 'DOCUMENT';
-export type DocumentType     = 'TITLE_DEED' | 'SURVEY_DIAGRAM' | 'BUILDING_PLAN' | 'OTHER' | 'PHOTO';
+export type DocumentType     =
+  | 'TITLE_DEED'
+  | 'SURVEY_DIAGRAM'
+  | 'BUILDING_PLAN'
+  | 'DEED_OF_TRANSFER'
+  | 'TAX_CLEARANCE'
+  | 'LAND_DISPUTE_AFFIDAVIT'
+  | 'PHOTO';
 
 export interface PropertyDocument {
   id:            string;

@@ -22,21 +22,25 @@ export class PropertyController {
   @Roles(UserRole.USER, UserRole.REGISTRAR, UserRole.ADMIN)
   @ApiConsumes('multipart/form-data')
   @UseInterceptors(FileFieldsInterceptor([
-    { name: 'images',        maxCount: 10 },
-    { name: 'titleDeed',     maxCount: 1  },
-    { name: 'surveyDiagram', maxCount: 1  },
-    { name: 'buildingPlan',  maxCount: 1  },
-    { name: 'otherDocs',     maxCount: 5  },
+    { name: 'images',               maxCount: 10 },
+    { name: 'titleDeed',            maxCount: 1  },
+    { name: 'surveyDiagram',        maxCount: 1  },
+    { name: 'buildingPlan',         maxCount: 1  },
+    { name: 'deedOfTransfer',       maxCount: 1  },
+    { name: 'taxClearance',         maxCount: 1  },
+    { name: 'landDisputeAffidavit', maxCount: 1  },
   ]))
   submit(
     @Body() dto: RegisterPropertyDto,
     @CurrentUser() user: JwtPayload,
     @UploadedFiles() files: {
-      images?:        Express.Multer.File[];
-      titleDeed?:     Express.Multer.File[];
-      surveyDiagram?: Express.Multer.File[];
-      buildingPlan?:  Express.Multer.File[];
-      otherDocs?:     Express.Multer.File[];
+      images?:               Express.Multer.File[];
+      titleDeed?:            Express.Multer.File[];
+      surveyDiagram?:        Express.Multer.File[];
+      buildingPlan?:         Express.Multer.File[];
+      deedOfTransfer?:       Express.Multer.File[];
+      taxClearance?:         Express.Multer.File[];
+      landDisputeAffidavit?: Express.Multer.File[];
     },
   ) {
     return this.propertyService.submit(dto, files ?? {}, user);

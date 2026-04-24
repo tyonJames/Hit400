@@ -64,11 +64,13 @@ export class PropertyService {
   async submit(
     dto: RegisterPropertyDto,
     files: {
-      images?:        Express.Multer.File[];
-      titleDeed?:     Express.Multer.File[];
-      surveyDiagram?: Express.Multer.File[];
-      buildingPlan?:  Express.Multer.File[];
-      otherDocs?:     Express.Multer.File[];
+      images?:               Express.Multer.File[];
+      titleDeed?:            Express.Multer.File[];
+      surveyDiagram?:        Express.Multer.File[];
+      buildingPlan?:         Express.Multer.File[];
+      deedOfTransfer?:       Express.Multer.File[];
+      taxClearance?:         Express.Multer.File[];
+      landDisputeAffidavit?: Express.Multer.File[];
     },
     submitter: JwtPayload,
   ) {
@@ -90,11 +92,13 @@ export class PropertyService {
       }));
     };
 
-    addFiles('images',        files.images,        DocumentCategory.IMAGE,    DocumentType.PHOTO);
-    addFiles('titleDeed',     files.titleDeed,     DocumentCategory.DOCUMENT, DocumentType.TITLE_DEED);
-    addFiles('surveyDiagram', files.surveyDiagram, DocumentCategory.DOCUMENT, DocumentType.SURVEY_DIAGRAM);
-    addFiles('buildingPlan',  files.buildingPlan,  DocumentCategory.DOCUMENT, DocumentType.BUILDING_PLAN);
-    addFiles('otherDocs',     files.otherDocs,     DocumentCategory.DOCUMENT, DocumentType.OTHER);
+    addFiles('images',               files.images,               DocumentCategory.IMAGE,    DocumentType.PHOTO);
+    addFiles('titleDeed',            files.titleDeed,            DocumentCategory.DOCUMENT, DocumentType.TITLE_DEED);
+    addFiles('surveyDiagram',        files.surveyDiagram,        DocumentCategory.DOCUMENT, DocumentType.SURVEY_DIAGRAM);
+    addFiles('buildingPlan',         files.buildingPlan,         DocumentCategory.DOCUMENT, DocumentType.BUILDING_PLAN);
+    addFiles('deedOfTransfer',       files.deedOfTransfer,       DocumentCategory.DOCUMENT, DocumentType.DEED_OF_TRANSFER);
+    addFiles('taxClearance',         files.taxClearance,         DocumentCategory.DOCUMENT, DocumentType.TAX_CLEARANCE);
+    addFiles('landDisputeAffidavit', files.landDisputeAffidavit, DocumentCategory.DOCUMENT, DocumentType.LAND_DISPUTE_AFFIDAVIT);
 
     const recordHash = this.computeRecordHash(dto, submitter.sub, taggedHashes);
 

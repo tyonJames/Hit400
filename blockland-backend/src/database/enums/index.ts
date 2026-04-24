@@ -41,11 +41,13 @@ export enum DocumentCategory {
 }
 
 export enum DocumentType {
-  TITLE_DEED      = 'TITLE_DEED',
-  SURVEY_DIAGRAM  = 'SURVEY_DIAGRAM',
-  BUILDING_PLAN   = 'BUILDING_PLAN',
-  OTHER           = 'OTHER',
-  PHOTO           = 'PHOTO',
+  TITLE_DEED             = 'TITLE_DEED',
+  SURVEY_DIAGRAM         = 'SURVEY_DIAGRAM',
+  BUILDING_PLAN          = 'BUILDING_PLAN',
+  DEED_OF_TRANSFER       = 'DEED_OF_TRANSFER',
+  TAX_CLEARANCE          = 'TAX_CLEARANCE',
+  LAND_DISPUTE_AFFIDAVIT = 'LAND_DISPUTE_AFFIDAVIT',
+  PHOTO                  = 'PHOTO',
 }
 
 export enum AcquisitionType {
