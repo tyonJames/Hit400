@@ -107,7 +107,7 @@ export default function NewPropertyPage() {
   }
 
   return (
-    <div className="max-w-6xl">
+    <div className="max-w-6xl mx-auto">
       <div className="mb-6">
         <h2 className="font-display text-xl text-slate-800">Register Property</h2>
         <p className="text-slate-500 text-sm mt-0.5">
