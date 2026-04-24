@@ -30,11 +30,38 @@ export class PropertyService {
     private dataSource: DataSource,
   ) {}
 
+  private computeRecordHash(
+    dto: RegisterPropertyDto,
+    submitterId: string,
+    fileHashes: string[],
+  ): string {
+    const parts = [
+      dto.plotNumber,
+      dto.titleDeedNumber,
+      dto.address,
+      String(dto.landSize),
+      dto.unit,
+      dto.zoningType,
+      dto.registrationDate,
+      dto.gpsLat  != null ? String(dto.gpsLat)  : '',
+      dto.gpsLng  != null ? String(dto.gpsLng)  : '',
+      dto.notes   ?? '',
+      submitterId,
+      ...fileHashes,
+    ];
+    return crypto.createHash('sha256').update(parts.join('|')).digest('hex');
+  }
+
   async submit(dto: RegisterPropertyDto, files: Express.Multer.File[], submitter: JwtPayload) {
     const existing = await this.propertyRepo.findOne({
       where: [{ plotNumber: dto.plotNumber }, { titleDeedNumber: dto.titleDeedNumber }],
     });
     if (existing) throw new ConflictException('Plot number or title deed already registered.');
+
+    const fileHashes = files.map(f =>
+      crypto.createHash('sha256').update(f.buffer).digest('hex')
+    );
+    const recordHash = this.computeRecordHash(dto, submitter.sub, fileHashes);
 
     const property = await this.dataSource.transaction(async (em) => {
       const prop = em.create(Property, {
@@ -52,15 +79,17 @@ export class PropertyService {
         tokenId:          null,
         blockchainTxHash: null,
         ipfsHash:         null,
+        recordHash,
         currentOwnerId:   submitter.sub,
         createdById:      submitter.sub,
       });
       await em.save(prop);
 
-      for (const file of files) {
+      for (let i = 0; i < files.length; i++) {
+        const file     = files[i];
+        const fileHash = fileHashes[i];
         const ext      = file.originalname.split('.').pop()?.toUpperCase() as FileType;
         const fileType = Object.values(FileType).includes(ext) ? ext : FileType.JPG;
-        const fileHash = crypto.createHash('sha256').update(file.buffer).digest('hex');
         await em.save(em.create(PropertyDocument, {
           propertyId:    prop.id,
           uploadedById:  submitter.sub,
@@ -78,7 +107,7 @@ export class PropertyService {
     await this.activityLogService.log({
       userId: submitter.sub, action: 'PROPERTY_SUBMITTED',
       entityType: 'Property', entityId: property.id,
-      metadata: { plotNumber: dto.plotNumber },
+      metadata: { plotNumber: dto.plotNumber, recordHash },
     });
 
     return property;
@@ -97,17 +126,17 @@ export class PropertyService {
     const count   = await this.propertyRepo.count({ where: { status: PropertyStatus.ACTIVE } });
     const tokenId = count + 1;
 
-    const titleDeedHash = crypto
-      .createHash('sha256')
-      .update(property.titleDeedNumber)
-      .digest('hex');
+    // Use the comprehensive record hash (property fields + doc hashes) as the
+    // on-chain fingerprint. Falls back to titleDeedNumber hash for legacy records.
+    const recordHash = property.recordHash
+      ?? crypto.createHash('sha256').update(property.titleDeedNumber).digest('hex');
 
     const registrarKey = this.configService.get<string>('STACKS_REGISTRAR_PRIVATE_KEY', '');
     const ownerAddress = owner.walletAddress && /^S[PT][A-Z0-9]{38,39}$/.test(owner.walletAddress)
       ? owner.walletAddress
       : 'SP000000000000000000002Q6VF78';
 
-    const ipfsHash = `ipfs-${titleDeedHash.slice(0, 40)}`;
+    const ipfsHash = `ipfs-${recordHash.slice(0, 40)}`;
 
     let txid: string;
     if (!registrarKey || !this.configService.get<string>('CLARITY_CONTRACT_ADDRESS', '')) {
@@ -115,7 +144,7 @@ export class PropertyService {
     } else {
       txid = await this.blockchainService.registerProperty({
         propertyId:    tokenId,
-        titleDeedHash,
+        titleDeedHash: recordHash,
         ownerAddress,
         ipfsHash,
         senderKey:     registrarKey,
@@ -143,7 +172,7 @@ export class PropertyService {
     await this.activityLogService.log({
       userId: registrar.sub, action: 'PROPERTY_APPROVED',
       entityType: 'Property', entityId: id,
-      metadata: { tokenId, txid },
+      metadata: { tokenId, txid, recordHash },
     });
 
     return this.propertyRepo.findOne({ where: { id }, relations: ['currentOwner'] });

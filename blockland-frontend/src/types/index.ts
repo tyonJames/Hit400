@@ -39,6 +39,7 @@ export interface Property {
   ipfsHash:             string | null;
   notes:                string | null;
   registrationComment:  string | null;
+  recordHash:           string | null;
   currentOwnerId:   string;
   createdById:      string;
   currentOwner?:    PublicUser;

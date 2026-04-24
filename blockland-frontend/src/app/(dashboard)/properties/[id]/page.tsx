@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams }   from 'next/navigation';
 import Link            from 'next/link';
-import { ArrowLeft, ExternalLink, CheckCircle, XCircle, Clock, AlertCircle } from 'lucide-react';
+import { ArrowLeft, ExternalLink, CheckCircle, XCircle, Clock, AlertCircle, ShieldCheck, Copy } from 'lucide-react';
 import { propertyService }                       from '@/lib/api/services';
 import { StatusBadge, TxHashDisplay }            from '@/components/shared/status-badge';
 import { useAuthStore }                          from '@/stores/auth.store';
@@ -23,6 +23,14 @@ export default function PropertyDetailPage() {
   const [actioning, setActioning] = useState(false);
   const [declineComment, setDeclineComment] = useState('');
   const [showDeclineForm, setShowDeclineForm] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  function copyHash(hash: string) {
+    navigator.clipboard.writeText(hash).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }
 
   useEffect(() => {
     propertyService.getById(id).then(setProperty).finally(() => setLoading(false));
@@ -223,6 +231,55 @@ export default function PropertyDetailPage() {
           </div>
         )}
       </div>
+
+      {/* Record Integrity Hash */}
+      {property.recordHash && (
+        <div className="card space-y-4">
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="w-4 h-4 text-primary" />
+            <p className="form-section mb-0">Record Integrity Hash</p>
+          </div>
+
+          <p className="text-sm text-slate-500">
+            A SHA-256 fingerprint of all property fields and uploaded documents, computed at submission.
+            {isActive
+              ? ' This hash is permanently anchored to the Stacks blockchain and cannot be altered.'
+              : ' This hash will be anchored to the blockchain upon registrar approval.'}
+          </p>
+
+          <div className="bg-slate-50 rounded-xl p-4 space-y-3">
+            <div className="flex items-start justify-between gap-3">
+              <p className="font-mono text-xs text-slate-700 break-all leading-relaxed flex-1">
+                {property.recordHash}
+              </p>
+              <button
+                onClick={() => copyHash(property.recordHash!)}
+                className="shrink-0 text-slate-400 hover:text-primary transition-colors"
+                title="Copy hash"
+              >
+                {copied ? <CheckCircle className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
+              </button>
+            </div>
+            <div className="border-t border-slate-200 pt-3">
+              <p className="text-xs text-slate-500 font-medium mb-1.5">Hash covers:</p>
+              <ul className="text-xs text-slate-500 space-y-0.5 list-disc list-inside">
+                <li>Plot number, title deed number, address</li>
+                <li>Land size, unit, zoning type, registration date</li>
+                <li>GPS coordinates and notes (if provided)</li>
+                <li>SHA-256 fingerprint of each uploaded document</li>
+                <li>Submitter identity</li>
+              </ul>
+            </div>
+          </div>
+
+          {isActive && property.blockchainTxHash && (
+            <div className="flex items-center gap-2 text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">
+              <CheckCircle className="w-4 h-4 shrink-0" />
+              Hash anchored on-chain — tamper-evident and immutable
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Blockchain info — only for active properties */}
       {isActive && property.blockchainTxHash && (

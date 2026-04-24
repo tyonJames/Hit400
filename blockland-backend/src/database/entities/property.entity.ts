@@ -67,6 +67,9 @@ export class Property extends BaseEntity {
   @Column({ name: 'registration_comment', type: 'varchar', length: 500, nullable: true })
   registrationComment: string | null;
 
+  @Column({ name: 'record_hash', type: 'char', length: 64, nullable: true })
+  recordHash: string | null;
+
   @Column({ name: 'current_owner_id', type: 'uuid' })
   currentOwnerId: string;
 
