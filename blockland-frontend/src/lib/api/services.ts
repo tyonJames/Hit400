@@ -2,7 +2,7 @@
 // src/lib/api/services.ts — BlockLand Zimbabwe API Service Functions
 // =============================================================================
 
-import { api } from './client';
+import { api, tokenStorage } from './client';
 import type {
   AuthTokensResponse, AuthUser, Property, PaginatedResponse,
   Transfer, Dispute, OwnershipRecord, VerificationResult,
@@ -79,19 +79,17 @@ export const propertyService = {
 
   openDocumentFile: async (propertyId: string, docId: string, fileName: string) => {
     const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api/v1';
-    const { tokenStorage } = await import('./client');
     const token = tokenStorage.getAccessToken();
-    const res   = await fetch(`${BASE_URL}/properties/${propertyId}/documents/${docId}/file`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-    });
+    const res = await fetch(
+      `${BASE_URL}/properties/${propertyId}/documents/${docId}/file`,
+      { headers: token ? { Authorization: `Bearer ${token}` } : {} },
+    );
     if (!res.ok) throw new Error('Could not load file.');
-    const blob    = await res.blob();
-    const url     = URL.createObjectURL(blob);
-    const a       = document.createElement('a');
-    a.href        = url;
-    a.target      = '_blank';
-    a.rel         = 'noopener noreferrer';
-    a.download    = '';
+    const blob = await res.blob();
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = fileName;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
