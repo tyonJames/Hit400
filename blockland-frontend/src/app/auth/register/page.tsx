@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link          from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useForm }   from 'react-hook-form';
@@ -8,12 +8,10 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { toast }     from 'sonner';
 import { registerSchema, type RegisterFormData } from '@/lib/schemas';
 import { authService }  from '@/lib/api/services';
-import { useAuthStore }  from '@/stores/auth.store';
-import { getPostLoginRedirect, ROUTES } from '@/lib/navigation';
+import { ROUTES } from '@/lib/navigation';
 
 export default function RegisterPage() {
   const router   = useRouter();
-  const setAuth  = useAuthStore((s) => s.setAuth);
   const [loading, setLoading] = useState(false);
 
   const { register, handleSubmit, formState: { errors } } = useForm<RegisterFormData>({
@@ -24,10 +22,8 @@ export default function RegisterPage() {
     setLoading(true);
     try {
       const { confirmPassword, ...payload } = data;
-      const response = await authService.register(payload as any);
-      setAuth(response.user, response.accessToken, response.refreshToken);
-      toast.success('Account created! Welcome to BlockLand.');
-      router.replace(getPostLoginRedirect(response.user.roles));
+      await authService.register(payload as any);
+      router.replace(`${ROUTES.LOGIN}?registered=1`);
     } catch (err: any) {
       toast.error(err?.message ?? 'Registration failed. Please try again.');
     } finally {

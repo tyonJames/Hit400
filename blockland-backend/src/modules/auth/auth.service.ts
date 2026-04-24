@@ -41,7 +41,7 @@ export class AuthService {
 
     const passwordHash = await bcrypt.hash(dto.password, 12);
 
-    const user = await this.dataSource.transaction(async (em) => {
+    await this.dataSource.transaction(async (em) => {
       const newUser = em.create(User, {
         fullName:      dto.fullName,
         nationalId:    dto.nationalId,
@@ -56,16 +56,13 @@ export class AuthService {
       });
       await em.save(newUser);
 
-      // Assign PUBLIC role by default
       const publicRole = await this.roleRepo.findOne({ where: { name: UserRoleEnum.PUBLIC } });
       if (publicRole) {
         await em.save(UserRole, { userId: newUser.id, roleId: publicRole.id });
       }
-
-      return newUser;
     });
 
-    return this.generateTokens(user, ipAddress);
+    return { pending: true, message: 'Registration successful. Your account is awaiting administrator approval.' };
   }
 
   // ---------------------------------------------------------------------------
