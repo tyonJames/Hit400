@@ -62,7 +62,7 @@
            flex items-center justify-between px-6 z-20;
   }
   .page-content {
-    @apply ml-sidebar mt-topbar min-h-[calc(100vh-3.5rem)] p-6;
+    @apply ml-sidebar mt-topbar h-[calc(100vh-3.5rem)] overflow-y-auto p-6;
   }
   .card          { @apply bg-white rounded-card border border-surface-border shadow-card p-6; }
   .card-hover    { @apply card transition-shadow duration-200 hover:shadow-card-hover cursor-pointer; }

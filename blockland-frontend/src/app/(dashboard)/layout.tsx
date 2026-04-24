@@ -29,7 +29,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <Sidebar />
       <Topbar />
       <main className="page-content">
-        {children}
+        <div className="max-w-7xl mx-auto w-full">
+          {children}
+        </div>
       </main>
     </>
   );
