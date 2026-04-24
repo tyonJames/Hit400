@@ -1,8 +1,10 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, StreamableFile } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository }       from 'typeorm';
 import { ConfigService }    from '@nestjs/config';
 import * as crypto          from 'crypto';
+import * as fs              from 'fs';
+import * as path            from 'path';
 import { PropertyDocument } from '../../database/entities/property-document.entity';
 import { Property }         from '../../database/entities/property.entity';
 import { FileType }         from '../../database/enums';
@@ -73,5 +75,24 @@ export class DocumentService {
     const property = await this.propRepo.findOne({ where: { id: propertyId } });
     if (!property) throw new NotFoundException('Property not found.');
     return this.docRepo.find({ where: { propertyId }, order: { uploadedAt: 'DESC' } });
+  }
+
+  async serveFile(docId: string, res: any): Promise<StreamableFile> {
+    const doc = await this.docRepo.findOne({ where: { id: docId } });
+    if (!doc) throw new NotFoundException('Document not found.');
+
+    const ext      = doc.fileType.toLowerCase();
+    const filePath = path.resolve(process.cwd(), 'uploads', `${doc.fileHash}.${ext}`);
+
+    if (!fs.existsSync(filePath)) throw new NotFoundException('File content not available on this server.');
+
+    const mimeMap: Record<string, string> = {
+      pdf: 'application/pdf', jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png',
+    };
+    res.set({
+      'Content-Type':        mimeMap[ext] ?? 'application/octet-stream',
+      'Content-Disposition': `inline; filename="${doc.fileName}"`,
+    });
+    return new StreamableFile(fs.createReadStream(filePath));
   }
 }

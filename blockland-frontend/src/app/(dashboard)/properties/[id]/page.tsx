@@ -3,13 +3,13 @@
 import { useEffect, useState } from 'react';
 import { useParams }   from 'next/navigation';
 import Link            from 'next/link';
-import { ArrowLeft, ExternalLink, CheckCircle, XCircle, Clock, AlertCircle, ShieldCheck, Copy } from 'lucide-react';
+import { ArrowLeft, ExternalLink, CheckCircle, XCircle, Clock, AlertCircle, ShieldCheck, Copy, FileText, ImageIcon, Download } from 'lucide-react';
 import { propertyService }                       from '@/lib/api/services';
 import { StatusBadge, TxHashDisplay }            from '@/components/shared/status-badge';
 import { useAuthStore }                          from '@/stores/auth.store';
 import { ROUTES }                                from '@/lib/navigation';
 import { toast }                                 from 'sonner';
-import type { Property } from '@/types';
+import type { Property, PropertyDocument } from '@/types';
 
 const NETWORK = process.env.NEXT_PUBLIC_STACKS_NETWORK ?? 'testnet';
 
@@ -24,6 +24,18 @@ export default function PropertyDetailPage() {
   const [declineComment, setDeclineComment] = useState('');
   const [showDeclineForm, setShowDeclineForm] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [openingDoc, setOpeningDoc] = useState<string | null>(null);
+
+  async function openDocument(doc: PropertyDocument) {
+    setOpeningDoc(doc.id);
+    try {
+      await propertyService.openDocumentFile(id, doc.id, doc.fileName);
+    } catch {
+      toast.error('Could not load file. It may no longer be available.');
+    } finally {
+      setOpeningDoc(null);
+    }
+  }
 
   function copyHash(hash: string) {
     navigator.clipboard.writeText(hash).then(() => {
@@ -91,6 +103,16 @@ export default function PropertyDetailPage() {
   const isPending  = property.status === 'PENDING_APPROVAL';
   const isDeclined = property.status === 'DECLINED';
   const isActive   = property.status === 'ACTIVE';
+
+  const DOC_LABELS: Record<string, string> = {
+    TITLE_DEED:             'Title Deed',
+    SURVEY_DIAGRAM:         'Survey Diagram',
+    BUILDING_PLAN:          'Building Plan',
+    DEED_OF_TRANSFER:       'Deed of Transfer',
+    TAX_CLEARANCE:          'ZIMRA Tax Clearance',
+    LAND_DISPUTE_AFFIDAVIT: 'Land Dispute Affidavit',
+    PHOTO:                  'Photo',
+  };
 
   const fields = [
     { label: 'Plot Number',       value: property.plotNumber,       mono: true },
@@ -231,6 +253,65 @@ export default function PropertyDetailPage() {
           </div>
         )}
       </div>
+
+      {/* Submitted Documents */}
+      {property.documents && property.documents.length > 0 && (
+        <div className="card space-y-3">
+          <p className="form-section">Submitted Documents</p>
+
+          {/* Images */}
+          {property.documents.filter((d) => d.category === 'IMAGE').length > 0 && (
+            <div className="space-y-1.5">
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Photos</p>
+              <div className="grid grid-cols-2 gap-1.5">
+                {property.documents.filter((d) => d.category === 'IMAGE').map((doc) => (
+                  <button
+                    key={doc.id}
+                    onClick={() => openDocument(doc)}
+                    disabled={openingDoc === doc.id}
+                    className="flex items-center gap-2 bg-slate-50 hover:bg-primary/5 border border-slate-100 hover:border-primary/20 rounded-lg px-2.5 py-2 text-left transition-colors group"
+                  >
+                    <ImageIcon className="w-3.5 h-3.5 text-slate-400 group-hover:text-primary shrink-0" />
+                    <span className="text-xs text-slate-600 truncate flex-1">{doc.fileName}</span>
+                    <Download className="w-3 h-3 text-slate-300 group-hover:text-primary shrink-0" />
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Legal Documents */}
+          {property.documents.filter((d) => d.category === 'DOCUMENT').length > 0 && (
+            <div className="space-y-1.5">
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Legal Documents</p>
+              <div className="space-y-1.5">
+                {property.documents.filter((d) => d.category === 'DOCUMENT').map((doc) => (
+                  <button
+                    key={doc.id}
+                    onClick={() => openDocument(doc)}
+                    disabled={openingDoc === doc.id}
+                    className="w-full flex items-center gap-3 bg-slate-50 hover:bg-primary/5 border border-slate-100 hover:border-primary/20 rounded-xl px-3 py-2.5 text-left transition-colors group"
+                  >
+                    <FileText className="w-4 h-4 text-slate-400 group-hover:text-primary shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-slate-700 group-hover:text-primary leading-tight">
+                        {DOC_LABELS[doc.documentType] ?? doc.documentType}
+                      </p>
+                      <p className="text-xs text-slate-400 truncate mt-0.5">
+                        {doc.fileName} · {(doc.fileSizeBytes / 1024).toFixed(0)} KB
+                      </p>
+                    </div>
+                    {openingDoc === doc.id
+                      ? <span className="text-xs text-slate-400 shrink-0">Loading…</span>
+                      : <Download className="w-4 h-4 text-slate-300 group-hover:text-primary shrink-0" />
+                    }
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Record Integrity Hash */}
       {property.recordHash && (

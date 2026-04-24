@@ -1,8 +1,9 @@
 import {
-  Controller, Post, Get, Param, UseInterceptors, UploadedFile,
+  Controller, Post, Get, Param, UseInterceptors, UploadedFile, Res,
 } from '@nestjs/common';
 import { FileInterceptor }   from '@nestjs/platform-express';
 import { ApiTags, ApiBearerAuth, ApiConsumes } from '@nestjs/swagger';
+import { Response }          from 'express';
 import { DocumentService }   from './document.service';
 import { CurrentUser }       from '../../common/decorators/current-user.decorator';
 
@@ -26,5 +27,13 @@ export class DocumentController {
   @Get()
   getAll(@Param('propertyId') propertyId: string) {
     return this.documentService.getForProperty(propertyId);
+  }
+
+  @Get(':docId/file')
+  serveFile(
+    @Param('docId') docId: string,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    return this.documentService.serveFile(docId, res);
   }
 }

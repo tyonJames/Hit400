@@ -43,6 +43,7 @@ export interface Property {
   currentOwnerId:   string;
   createdById:      string;
   currentOwner?:    PublicUser;
+  documents?:       PropertyDocument[];
   createdAt:        string;
   updatedAt:        string;
   onChainState?: {

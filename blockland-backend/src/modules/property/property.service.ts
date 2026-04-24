@@ -5,6 +5,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource, FindOptionsWhere, In } from 'typeorm';
 import { ConfigService }    from '@nestjs/config';
 import * as crypto          from 'crypto';
+import * as fs              from 'fs';
+import * as path            from 'path';
 import { Property }         from '../../database/entities/property.entity';
 import { User }             from '../../database/entities/user.entity';
 import { OwnershipRecord }  from '../../database/entities/ownership-record.entity';
@@ -101,6 +103,15 @@ export class PropertyService {
     addFiles('landDisputeAffidavit', files.landDisputeAffidavit, DocumentCategory.DOCUMENT, DocumentType.LAND_DISPUTE_AFFIDAVIT);
 
     const recordHash = this.computeRecordHash(dto, submitter.sub, taggedHashes);
+
+    // Persist file buffers to disk so registrars can view them later
+    const uploadDir = path.join(process.cwd(), 'uploads');
+    fs.mkdirSync(uploadDir, { recursive: true });
+    for (const { file, hash } of taggedHashes) {
+      const ext      = (file.originalname.split('.').pop() ?? 'bin').toLowerCase();
+      const diskPath = path.join(uploadDir, `${hash}.${ext}`);
+      if (!fs.existsSync(diskPath)) fs.writeFileSync(diskPath, file.buffer);
+    }
 
     const property = await this.dataSource.transaction(async (em) => {
       const prop = em.create(Property, {
