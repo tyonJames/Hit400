@@ -8,9 +8,9 @@ import {
   Check,
   CreateDateColumn,
 } from 'typeorm';
-import { Property } from './property.entity';
-import { User }     from './user.entity';
-import { FileType } from '../enums';
+import { Property }        from './property.entity';
+import { User }            from './user.entity';
+import { FileType, DocumentCategory, DocumentType } from '../enums';
 
 @Entity('property_documents')
 @Index('IDX_prop_docs_property_id', ['propertyId'])
@@ -32,6 +32,12 @@ export class PropertyDocument {
 
   @Column({ name: 'file_type', type: 'enum', enum: FileType })
   fileType: FileType;
+
+  @Column({ name: 'category', type: 'enum', enum: DocumentCategory, default: DocumentCategory.DOCUMENT })
+  category: DocumentCategory;
+
+  @Column({ name: 'document_type', type: 'enum', enum: DocumentType, default: DocumentType.OTHER })
+  documentType: DocumentType;
 
   @Column({ name: 'file_size_bytes', type: 'integer' })
   fileSizeBytes: number;

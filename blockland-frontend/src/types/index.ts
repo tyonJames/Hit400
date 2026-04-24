@@ -52,11 +52,16 @@ export interface Property {
   } | null;
 }
 
+export type DocumentCategory = 'IMAGE' | 'DOCUMENT';
+export type DocumentType     = 'TITLE_DEED' | 'SURVEY_DIAGRAM' | 'BUILDING_PLAN' | 'OTHER' | 'PHOTO';
+
 export interface PropertyDocument {
   id:            string;
   propertyId:    string;
   fileName:      string;
   fileType:      'PDF' | 'JPG' | 'PNG';
+  category:      DocumentCategory;
+  documentType:  DocumentType;
   fileSizeBytes: number;
   ipfsHash:      string;
   fileHash:      string;

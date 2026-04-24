@@ -12,7 +12,7 @@ import { PropertyDocument } from '../../database/entities/property-document.enti
 import { BlockchainService } from '../blockchain/blockchain.service';
 import { ActivityLogService } from '../activity-log/activity-log.service';
 import {
-  PropertyStatus, AcquisitionType, FileType,
+  PropertyStatus, AcquisitionType, FileType, DocumentCategory, DocumentType,
 } from '../../database/enums';
 import { RegisterPropertyDto } from './dto/register-property.dto';
 import { JwtPayload }          from '../auth/strategies/jwt.strategy';
@@ -30,38 +30,73 @@ export class PropertyService {
     private dataSource: DataSource,
   ) {}
 
+  private fileHash(buf: Buffer) {
+    return crypto.createHash('sha256').update(buf).digest('hex');
+  }
+
+  private toFileType(originalname: string): FileType {
+    const ext = originalname.split('.').pop()?.toUpperCase();
+    return (Object.values(FileType) as string[]).includes(ext ?? '')
+      ? (ext as FileType)
+      : FileType.JPG;
+  }
+
   private computeRecordHash(
     dto: RegisterPropertyDto,
     submitterId: string,
-    fileHashes: string[],
+    taggedHashes: Array<{ tag: string; hash: string }>,
   ): string {
+    const filePart = [...taggedHashes]
+      .sort((a, b) => a.tag.localeCompare(b.tag))
+      .map(({ tag, hash }) => `${tag}:${hash}`)
+      .join('|');
+
     const parts = [
-      dto.plotNumber,
-      dto.titleDeedNumber,
-      dto.address,
-      String(dto.landSize),
-      dto.unit,
-      dto.zoningType,
-      dto.registrationDate,
-      dto.gpsLat  != null ? String(dto.gpsLat)  : '',
-      dto.gpsLng  != null ? String(dto.gpsLng)  : '',
-      dto.notes   ?? '',
-      submitterId,
-      ...fileHashes,
+      dto.plotNumber, dto.titleDeedNumber, dto.address,
+      String(dto.landSize), dto.unit, dto.zoningType, dto.registrationDate,
+      dto.gpsLat != null ? String(dto.gpsLat) : '',
+      dto.gpsLng != null ? String(dto.gpsLng) : '',
+      dto.notes ?? '', submitterId, filePart,
     ];
-    return crypto.createHash('sha256').update(parts.join('|')).digest('hex');
+    return crypto.createHash('sha256').update(parts.join('||')).digest('hex');
   }
 
-  async submit(dto: RegisterPropertyDto, files: Express.Multer.File[], submitter: JwtPayload) {
+  async submit(
+    dto: RegisterPropertyDto,
+    files: {
+      images?:        Express.Multer.File[];
+      titleDeed?:     Express.Multer.File[];
+      surveyDiagram?: Express.Multer.File[];
+      buildingPlan?:  Express.Multer.File[];
+      otherDocs?:     Express.Multer.File[];
+    },
+    submitter: JwtPayload,
+  ) {
     const existing = await this.propertyRepo.findOne({
       where: [{ plotNumber: dto.plotNumber }, { titleDeedNumber: dto.titleDeedNumber }],
     });
     if (existing) throw new ConflictException('Plot number or title deed already registered.');
 
-    const fileHashes = files.map(f =>
-      crypto.createHash('sha256').update(f.buffer).digest('hex')
-    );
-    const recordHash = this.computeRecordHash(dto, submitter.sub, fileHashes);
+    // Build tagged file list for deterministic hashing
+    const taggedHashes: Array<{ tag: string; hash: string; file: Express.Multer.File; category: DocumentCategory; docType: DocumentType }> = [];
+
+    const addFiles = (field: string, list: Express.Multer.File[] | undefined, category: DocumentCategory, docType: DocumentType) => {
+      (list ?? []).forEach((f, i) => taggedHashes.push({
+        tag:      `${field}[${i}]`,
+        hash:     this.fileHash(f.buffer),
+        file:     f,
+        category,
+        docType,
+      }));
+    };
+
+    addFiles('images',        files.images,        DocumentCategory.IMAGE,    DocumentType.PHOTO);
+    addFiles('titleDeed',     files.titleDeed,     DocumentCategory.DOCUMENT, DocumentType.TITLE_DEED);
+    addFiles('surveyDiagram', files.surveyDiagram, DocumentCategory.DOCUMENT, DocumentType.SURVEY_DIAGRAM);
+    addFiles('buildingPlan',  files.buildingPlan,  DocumentCategory.DOCUMENT, DocumentType.BUILDING_PLAN);
+    addFiles('otherDocs',     files.otherDocs,     DocumentCategory.DOCUMENT, DocumentType.OTHER);
+
+    const recordHash = this.computeRecordHash(dto, submitter.sub, taggedHashes);
 
     const property = await this.dataSource.transaction(async (em) => {
       const prop = em.create(Property, {
@@ -85,19 +120,17 @@ export class PropertyService {
       });
       await em.save(prop);
 
-      for (let i = 0; i < files.length; i++) {
-        const file     = files[i];
-        const fileHash = fileHashes[i];
-        const ext      = file.originalname.split('.').pop()?.toUpperCase() as FileType;
-        const fileType = Object.values(FileType).includes(ext) ? ext : FileType.JPG;
+      for (const { file, hash, category, docType } of taggedHashes) {
         await em.save(em.create(PropertyDocument, {
           propertyId:    prop.id,
           uploadedById:  submitter.sub,
           fileName:      file.originalname,
-          fileType,
+          fileType:      this.toFileType(file.originalname),
           fileSizeBytes: file.size,
-          ipfsHash:      `pending-${fileHash.slice(0, 40)}`,
-          fileHash,
+          ipfsHash:      `pending-${hash.slice(0, 40)}`,
+          fileHash:      hash,
+          category,
+          documentType:  docType,
         }));
       }
 
@@ -107,7 +140,7 @@ export class PropertyService {
     await this.activityLogService.log({
       userId: submitter.sub, action: 'PROPERTY_SUBMITTED',
       entityType: 'Property', entityId: property.id,
-      metadata: { plotNumber: dto.plotNumber, recordHash },
+      metadata: { plotNumber: dto.plotNumber, recordHash, fileCount: taggedHashes.length },
     });
 
     return property;

@@ -5,25 +5,83 @@ import { useRouter }   from 'next/navigation';
 import { useForm }     from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast }       from 'sonner';
-import { Upload, X }   from 'lucide-react';
+import { Upload, X, Image, FileText, FileCheck, FileStack, Paperclip } from 'lucide-react';
 import { createPropertySchema, type CreatePropertyFormData, ZONING_TYPES, LAND_SIZE_UNITS, validateFile } from '@/lib/schemas';
 import { propertyService } from '@/lib/api/services';
 import { useAuthStore }    from '@/stores/auth.store';
 import { ROUTES }          from '@/lib/navigation';
+
+type FileSlot = 'images' | 'titleDeed' | 'surveyDiagram' | 'buildingPlan' | 'otherDocs';
+
+interface UploadSlot {
+  slot:     FileSlot;
+  label:    string;
+  hint:     string;
+  icon:     React.ReactNode;
+  multiple: boolean;
+  maxCount: number;
+}
+
+const UPLOAD_SLOTS: UploadSlot[] = [
+  {
+    slot:     'images',
+    label:    'Property Photos',
+    hint:     'Upload photos of the property (JPG, PNG). Up to 10 images.',
+    icon:     <Image className="w-5 h-5 text-slate-400" />,
+    multiple: true,
+    maxCount: 10,
+  },
+  {
+    slot:     'titleDeed',
+    label:    'Title Deed',
+    hint:     'Official title deed document (PDF, JPG, PNG). 1 file.',
+    icon:     <FileCheck className="w-5 h-5 text-slate-400" />,
+    multiple: false,
+    maxCount: 1,
+  },
+  {
+    slot:     'surveyDiagram',
+    label:    'Survey Diagram',
+    hint:     'Cadastral or survey diagram (PDF, JPG, PNG). 1 file.',
+    icon:     <FileText className="w-5 h-5 text-slate-400" />,
+    multiple: false,
+    maxCount: 1,
+  },
+  {
+    slot:     'buildingPlan',
+    label:    'Building Plan',
+    hint:     'Approved building plan or floor plan (PDF, JPG, PNG). 1 file.',
+    icon:     <FileStack className="w-5 h-5 text-slate-400" />,
+    multiple: false,
+    maxCount: 1,
+  },
+  {
+    slot:     'otherDocs',
+    label:    'Other Documents',
+    hint:     'Any other supporting documents (PDF, JPG, PNG). Up to 5 files.',
+    icon:     <Paperclip className="w-5 h-5 text-slate-400" />,
+    multiple: true,
+    maxCount: 5,
+  },
+];
 
 export default function NewPropertyPage() {
   const router      = useRouter();
   const isRegistrar = useAuthStore((s) => s.isRegistrar());
 
   const [loading, setLoading] = useState(false);
-  const [files, setFiles]     = useState<File[]>([]);
-  const [fileErrors, setFileErrors] = useState<string[]>([]);
+  const [fileMap, setFileMap] = useState<Record<FileSlot, File[]>>({
+    images: [], titleDeed: [], surveyDiagram: [], buildingPlan: [], otherDocs: [],
+  });
+  const [fileErrors, setFileErrors] = useState<Record<FileSlot, string[]>>({
+    images: [], titleDeed: [], surveyDiagram: [], buildingPlan: [], otherDocs: [],
+  });
 
   const { register, handleSubmit, formState: { errors } } = useForm<CreatePropertyFormData>({
     resolver: zodResolver(createPropertySchema),
   });
 
-  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+  function handleFileChange(slot: FileSlot, maxCount: number, e: React.ChangeEvent<HTMLInputElement>) {
     const selected = Array.from(e.target.files ?? []);
     const errs: string[] = [];
     const valid: File[] = [];
@@ -32,13 +90,19 @@ export default function NewPropertyPage() {
       if (err) errs.push(`${f.name}: ${err}`);
       else valid.push(f);
     }
-    setFileErrors(errs);
-    setFiles((prev) => [...prev, ...valid]);
+
+    setFileErrors((prev) => ({ ...prev, [slot]: errs }));
+    setFileMap((prev) => {
+      const next = slot === 'titleDeed' || slot === 'surveyDiagram' || slot === 'buildingPlan'
+        ? valid.slice(0, 1)
+        : [...prev[slot], ...valid].slice(0, maxCount);
+      return { ...prev, [slot]: next };
+    });
     e.target.value = '';
   }
 
-  function removeFile(index: number) {
-    setFiles((prev) => prev.filter((_, i) => i !== index));
+  function removeFile(slot: FileSlot, index: number) {
+    setFileMap((prev) => ({ ...prev, [slot]: prev[slot].filter((_, i) => i !== index) }));
   }
 
   async function onSubmit(data: CreatePropertyFormData) {
@@ -48,7 +112,12 @@ export default function NewPropertyPage() {
       Object.entries(data).forEach(([k, v]) => {
         if (v !== undefined && v !== null && v !== '') formData.append(k, String(v));
       });
-      files.forEach((f) => formData.append('propertyFiles', f));
+
+      fileMap.images.forEach((f)        => formData.append('images',        f));
+      fileMap.titleDeed.forEach((f)     => formData.append('titleDeed',     f));
+      fileMap.surveyDiagram.forEach((f) => formData.append('surveyDiagram', f));
+      fileMap.buildingPlan.forEach((f)  => formData.append('buildingPlan',  f));
+      fileMap.otherDocs.forEach((f)     => formData.append('otherDocs',     f));
 
       const property = await propertyService.submit(formData);
       toast.success(
@@ -141,44 +210,61 @@ export default function NewPropertyPage() {
           </div>
         </div>
 
-        {/* File uploads */}
-        <div className="card space-y-3">
-          <p className="form-section">Property Documents &amp; Images</p>
+        {/* Categorised file uploads */}
+        <div className="card space-y-5">
+          <p className="form-section">Documents &amp; Images</p>
           <p className="text-sm text-slate-500">
-            Upload your title deed, survey diagrams, or property photos. Accepted: PDF, JPG, PNG. Max 5MB each.
+            Upload documents and photos in their respective categories. Accepted: PDF, JPG, PNG — max 5 MB each.
           </p>
 
-          <label className="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-slate-300 rounded-xl p-6 cursor-pointer hover:border-primary transition-colors">
-            <Upload className="w-6 h-6 text-slate-400" />
-            <span className="text-sm text-slate-500">Click to add files</span>
-            <input
-              type="file"
-              multiple
-              accept=".pdf,.jpg,.jpeg,.png"
-              onChange={handleFileChange}
-              className="hidden"
-            />
-          </label>
+          {UPLOAD_SLOTS.map(({ slot, label, hint, icon, multiple, maxCount }) => (
+            <div key={slot} className="space-y-2">
+              <div className="flex items-center gap-2">
+                {icon}
+                <span className="text-sm font-medium text-slate-700">{label}</span>
+                {fileMap[slot].length > 0 && (
+                  <span className="ml-auto text-xs text-emerald-600 font-medium">
+                    {fileMap[slot].length} file{fileMap[slot].length > 1 ? 's' : ''} added
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-slate-400">{hint}</p>
 
-          {fileErrors.map((err, i) => (
-            <p key={i} className="error-msg">{err}</p>
-          ))}
+              <label className="flex items-center gap-3 border border-dashed border-slate-300 rounded-xl px-4 py-3 cursor-pointer hover:border-primary hover:bg-slate-50 transition-colors">
+                <Upload className="w-4 h-4 text-slate-400 shrink-0" />
+                <span className="text-sm text-slate-500">
+                  {multiple ? 'Click to add files' : fileMap[slot].length > 0 ? 'Replace file' : 'Click to choose file'}
+                </span>
+                <input
+                  type="file"
+                  multiple={multiple}
+                  accept=".pdf,.jpg,.jpeg,.png"
+                  onChange={(e) => handleFileChange(slot, maxCount, e)}
+                  className="hidden"
+                />
+              </label>
 
-          {files.length > 0 && (
-            <ul className="space-y-2">
-              {files.map((f, i) => (
-                <li key={i} className="flex items-center justify-between bg-slate-50 rounded-lg px-3 py-2 text-sm">
-                  <span className="text-slate-700 truncate max-w-xs">{f.name}</span>
-                  <div className="flex items-center gap-3 shrink-0">
-                    <span className="text-slate-400 text-xs">{(f.size / 1024).toFixed(0)} KB</span>
-                    <button type="button" onClick={() => removeFile(i)} className="text-slate-400 hover:text-red-500">
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                </li>
+              {fileErrors[slot].map((err, i) => (
+                <p key={i} className="error-msg">{err}</p>
               ))}
-            </ul>
-          )}
+
+              {fileMap[slot].length > 0 && (
+                <ul className="space-y-1.5">
+                  {fileMap[slot].map((f, i) => (
+                    <li key={i} className="flex items-center justify-between bg-slate-50 rounded-lg px-3 py-2 text-sm">
+                      <span className="text-slate-700 truncate max-w-xs">{f.name}</span>
+                      <div className="flex items-center gap-3 shrink-0">
+                        <span className="text-slate-400 text-xs">{(f.size / 1024).toFixed(0)} KB</span>
+                        <button type="button" onClick={() => removeFile(slot, i)} className="text-slate-400 hover:text-red-500">
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          ))}
         </div>
 
         <div className="flex gap-3">

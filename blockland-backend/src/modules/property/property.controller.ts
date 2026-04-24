@@ -2,7 +2,7 @@ import {
   Controller, Get, Post, Patch, Param, Query, Body,
   UseInterceptors, UploadedFiles,
 } from '@nestjs/common';
-import { FilesInterceptor }  from '@nestjs/platform-express';
+import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiBearerAuth, ApiConsumes } from '@nestjs/swagger';
 import { PropertyService }      from './property.service';
 import { RegisterPropertyDto }  from './dto/register-property.dto';
@@ -21,13 +21,25 @@ export class PropertyController {
   @Post()
   @Roles(UserRole.USER, UserRole.REGISTRAR, UserRole.ADMIN)
   @ApiConsumes('multipart/form-data')
-  @UseInterceptors(FilesInterceptor('propertyFiles', 10))
+  @UseInterceptors(FileFieldsInterceptor([
+    { name: 'images',        maxCount: 10 },
+    { name: 'titleDeed',     maxCount: 1  },
+    { name: 'surveyDiagram', maxCount: 1  },
+    { name: 'buildingPlan',  maxCount: 1  },
+    { name: 'otherDocs',     maxCount: 5  },
+  ]))
   submit(
     @Body() dto: RegisterPropertyDto,
     @CurrentUser() user: JwtPayload,
-    @UploadedFiles() files: Express.Multer.File[],
+    @UploadedFiles() files: {
+      images?:        Express.Multer.File[];
+      titleDeed?:     Express.Multer.File[];
+      surveyDiagram?: Express.Multer.File[];
+      buildingPlan?:  Express.Multer.File[];
+      otherDocs?:     Express.Multer.File[];
+    },
   ) {
-    return this.propertyService.submit(dto, files ?? [], user);
+    return this.propertyService.submit(dto, files ?? {}, user);
   }
 
   @Patch(':id/approve')

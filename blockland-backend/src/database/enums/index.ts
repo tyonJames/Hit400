@@ -35,6 +35,19 @@ export enum FileType {
   PNG = 'PNG',
 }
 
+export enum DocumentCategory {
+  IMAGE    = 'IMAGE',
+  DOCUMENT = 'DOCUMENT',
+}
+
+export enum DocumentType {
+  TITLE_DEED      = 'TITLE_DEED',
+  SURVEY_DIAGRAM  = 'SURVEY_DIAGRAM',
+  BUILDING_PLAN   = 'BUILDING_PLAN',
+  OTHER           = 'OTHER',
+  PHOTO           = 'PHOTO',
+}
+
 export enum AcquisitionType {
   INITIAL_REGISTRATION = 'INITIAL_REGISTRATION',
   TRANSFER             = 'TRANSFER',
