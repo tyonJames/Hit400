@@ -7,9 +7,10 @@ import {
   ShieldCheck, Search, User, FilePlus, List, Briefcase,
   Send, Repeat, MessageSquareWarning, PlusCircle, UserCheck,
   Users, Activity, ChevronDown, ChevronRight, ClipboardList,
-  Store, ShoppingBag, Tag, UserPlus,
+  Store, ShoppingBag, Tag, UserPlus, MessageSquare,
 } from 'lucide-react';
-import { useState }              from 'react';
+import { useState, useEffect }   from 'react';
+import { messageService }        from '@/lib/api/services';
 import { useAuthStore }          from '@/stores/auth.store';
 import { SIDEBAR_NAV, type NavItem } from '@/lib/navigation';
 import type { UserRole }         from '@/types';
@@ -19,7 +20,7 @@ const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   ShieldCheck, Search, User, FilePlus, List, Briefcase,
   Send, Repeat, MessageSquareWarning, PlusCircle, UserCheck,
   Users, Activity, ClipboardList, UserPlus,
-  Store, ShoppingBag, Tag,
+  Store, ShoppingBag, Tag, MessageSquare,
 };
 
 export function Sidebar() {
@@ -27,7 +28,17 @@ export function Sidebar() {
   const user        = useAuthStore((s) => s.user);
   const primaryRole = useAuthStore((s) => s.primaryRole());
   const roles       = (user?.roles ?? []) as UserRole[];
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const [expanded, setExpanded]     = useState<Record<string, boolean>>({});
+  const [unreadMsgs, setUnreadMsgs] = useState(0);
+
+  useEffect(() => {
+    if (!user) return;
+    messageService.getUnreadCount().then((n) => setUnreadMsgs(typeof n === 'number' ? n : 0)).catch(() => {});
+    const interval = setInterval(() => {
+      messageService.getUnreadCount().then((n) => setUnreadMsgs(typeof n === 'number' ? n : 0)).catch(() => {});
+    }, 30_000);
+    return () => clearInterval(interval);
+  }, [user?.id]);
 
   const toggle = (label: string) =>
     setExpanded((prev) => ({ ...prev, [label]: !prev[label] }));
@@ -57,6 +68,7 @@ export function Sidebar() {
             roles={roles}
             isExpanded={!!expanded[item.label]}
             onToggle={() => toggle(item.label)}
+            badge={item.label === 'Messages' && unreadMsgs > 0 ? unreadMsgs : undefined}
           />
         ))}
       </nav>
@@ -99,10 +111,10 @@ export function Sidebar() {
 }
 
 function NavItemRow({
-  item, pathname, roles, isExpanded, onToggle,
+  item, pathname, roles, isExpanded, onToggle, badge,
 }: {
   item: NavItem; pathname: string; roles: UserRole[];
-  isExpanded: boolean; onToggle: () => void;
+  isExpanded: boolean; onToggle: () => void; badge?: number;
 }) {
   const Icon     = ICON_MAP[item.icon];
   const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
@@ -152,6 +164,12 @@ function NavItemRow({
     <Link href={item.href} className={`nav-item ${isActive ? 'nav-item-active' : ''}`}>
       {Icon && <Icon className="w-4 h-4 flex-shrink-0" />}
       <span className="flex-1">{item.label}</span>
+      {badge != null && badge > 0 && (
+        <span className="ml-auto flex-shrink-0 min-w-[1.25rem] h-5 px-1 rounded-full bg-red-500
+                         text-white text-xs font-bold flex items-center justify-center">
+          {badge > 99 ? '99+' : badge}
+        </span>
+      )}
     </Link>
   );
 }

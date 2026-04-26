@@ -231,6 +231,37 @@ export const dashboardService = {
     api.get<PaginatedResponse<ActivityLog>>('/dashboard/activity', params),
 };
 
+export const messageService = {
+  send: (data: { transferId?: string; subject: string; body: string }, file?: File) => {
+    if (file) {
+      const form = new FormData();
+      if (data.transferId) form.append('transferId', data.transferId);
+      form.append('subject', data.subject);
+      form.append('body', data.body);
+      form.append('attachment', file);
+      return api.upload<import('@/types').Message>('/messages', form);
+    }
+    return api.post<import('@/types').Message>('/messages', data);
+  },
+
+  getInbox: (params?: { page?: number; limit?: number }) =>
+    api.get<import('@/types').PaginatedResponse<import('@/types').Message>>('/messages/inbox', params),
+
+  getSent: (params?: { page?: number; limit?: number }) =>
+    api.get<import('@/types').PaginatedResponse<import('@/types').Message>>('/messages/sent', params),
+
+  getUnreadCount: () =>
+    api.get<number>('/messages/unread-count'),
+
+  getById: (id: string) =>
+    api.get<import('@/types').Message>(`/messages/${id}`),
+
+  getAttachmentUrl: (id: string) => {
+    const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api/v1';
+    return `${BASE_URL}/messages/${id}/attachment`;
+  },
+};
+
 export const adminService = {
   getRegistrars: () => api.get<AuthUser[]>('/admin/registrars'),
 

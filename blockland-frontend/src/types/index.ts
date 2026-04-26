@@ -286,6 +286,30 @@ export interface ApiError {
   path:       string;
 }
 
+export interface MessageRecipient {
+  id:          string;
+  messageId:   string;
+  recipientId: string;
+  readAt:      string | null;
+  recipient?:  PublicUser;
+}
+
+export interface Message {
+  id:                   string;
+  senderId:             string;
+  transferId:           string | null;
+  subject:              string;
+  body:                 string;
+  attachmentFileName:   string | null;
+  attachmentFileSize:   number | null;
+  readAt?:              string | null;
+  sender?:              PublicUser;
+  transfer?:            { id: string; property?: { plotNumber: string; address: string } } | null;
+  recipients?:          MessageRecipient[];
+  createdAt:            string;
+  updatedAt:            string;
+}
+
 export interface BlockchainTxState {
   txid:       string;
   status:     'pending' | 'confirmed' | 'failed';

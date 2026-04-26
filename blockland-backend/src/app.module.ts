@@ -15,6 +15,7 @@ import { DocumentModule }       from './modules/document/document.module';
 import { DashboardModule }      from './modules/dashboard/dashboard.module';
 import { OwnershipModule }      from './modules/ownership/ownership.module';
 import { MarketplaceModule }    from './modules/marketplace/marketplace.module';
+import { MessagesModule }       from './modules/messages/messages.module';
 import { JwtAuthGuard }         from './common/guards/jwt-auth.guard';
 import { RolesGuard }           from './common/guards/roles.guard';
 
@@ -35,6 +36,7 @@ import { RolesGuard }           from './common/guards/roles.guard';
     DashboardModule,
     OwnershipModule,
     MarketplaceModule,
+    MessagesModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },

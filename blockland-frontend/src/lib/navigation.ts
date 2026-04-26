@@ -31,6 +31,7 @@ export const ROUTES = {
   MARKETPLACE_NEW:  '/marketplace/new',
   MARKETPLACE_MY:   '/marketplace/my-listings',
   MARKETPLACE_ITEM: (id: string) => `/marketplace/${id}`,
+  MESSAGES:         '/messages',
 } as const;
 
 export function getPostLoginRedirect(roles: UserRole[]): string {
@@ -93,6 +94,7 @@ export const SIDEBAR_NAV: NavItem[] = [
       { label: 'Create Listing',   href: ROUTES.MARKETPLACE_NEW, icon: 'PlusCircle', roles: ['USER', 'REGISTRAR'] },
     ],
   },
+  { label: 'Messages',            href: ROUTES.MESSAGES, icon: 'MessageSquare' },
   { label: 'Verification Portal', href: ROUTES.VERIFY,   icon: 'Search' },
   { label: 'My Profile',          href: ROUTES.PROFILE,  icon: 'User' },
 ];

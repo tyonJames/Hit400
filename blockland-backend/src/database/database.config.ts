@@ -47,6 +47,8 @@ import { VerificationLog }     from './entities/verification-log.entity';
 import { ActivityLog }         from './entities/activity-log.entity';
 import { MarketplaceListing }  from './entities/marketplace-listing.entity';
 import { BuyerInterest }       from './entities/buyer-interest.entity';
+import { Message }             from './entities/message.entity';
+import { MessageRecipient }    from './entities/message-recipient.entity';
 
 /**
  * Returns the TypeORM DataSourceOptions based on the current environment.
@@ -98,6 +100,8 @@ export function getDatabaseConfig(): DataSourceOptions {
       ActivityLog,
       MarketplaceListing,
       BuyerInterest,
+      Message,
+      MessageRecipient,
     ],
 
     // ---------------------------------------------------------------------------
