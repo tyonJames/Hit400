@@ -8,8 +8,13 @@ export interface AuthUser {
   id:            string;
   email:         string;
   fullName:      string;
+  nationalId?:   string;
+  phone?:        string;
   roles:         UserRole[];
   walletAddress: string | null;
+  isActive?:     boolean;
+  isApproved?:   boolean;
+  createdAt?:    string;
 }
 
 export interface AuthTokensResponse {
@@ -200,12 +205,12 @@ export interface ActivityLog {
 }
 
 export interface DashboardSummary {
-  role:                     UserRole | string;
-  totalProperties:          number;
-  pendingTransfers:         number;
-  activeDisputes:           number;
-  recentActivity:           ActivityLog[];
-  incomingPendingApprovals?: number;
+  role:               UserRole | string;
+  totalProperties:    number;
+  pendingTransfers:   number;
+  activeDisputes:     number;
+  pendingApprovals?:  number;
+  recentActivity:     ActivityLog[];
 }
 
 export interface PublicUser {

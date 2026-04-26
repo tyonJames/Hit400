@@ -1,20 +1,26 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { MapPin, ArrowLeftRight, AlertTriangle, Activity } from 'lucide-react';
+import Link from 'next/link';
+import { MapPin, ArrowLeftRight, AlertTriangle, Activity, ClipboardList, Users, ShieldCheck } from 'lucide-react';
 import { dashboardService } from '@/lib/api/services';
 import { useAuthStore }     from '@/stores/auth.store';
+import { ROUTES }           from '@/lib/navigation';
 import type { DashboardSummary } from '@/types';
 
 export default function DashboardPage() {
-  const user = useAuthStore((s) => s.user);
+  const user        = useAuthStore((s) => s.user);
+  const isAdmin     = useAuthStore((s) => s.isAdmin());
+  const isRegistrar = useAuthStore((s) => s.isRegistrar());
+  const isUser      = useAuthStore((s) => s.isUser());
+
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     dashboardService.getSummary()
       .then(setSummary)
-      .catch(() => {/* handled silently */})
+      .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
 
@@ -33,11 +39,61 @@ export default function DashboardPage() {
     );
   }
 
-  const stats = [
-    { label: 'Total Properties', value: summary?.totalProperties ?? 0, icon: MapPin,          color: 'text-teal-600' },
-    { label: 'Pending Transfers', value: summary?.pendingTransfers ?? 0, icon: ArrowLeftRight, color: 'text-amber-600' },
-    { label: 'Active Disputes',  value: summary?.activeDisputes ?? 0,  icon: AlertTriangle,   color: 'text-red-600' },
+  // Build stat cards based on role
+  type StatCard = {
+    label: string; value: number;
+    icon: React.ElementType; color: string;
+    href?: string; badge?: boolean;
+  };
+
+  const commonStats: StatCard[] = [
+    {
+      label: isUser && !isRegistrar && !isAdmin ? 'My Active Properties' : 'Active Properties',
+      value: summary?.totalProperties ?? 0,
+      icon:  MapPin,
+      color: 'text-teal-600',
+      href:  ROUTES.PROPERTIES,
+    },
+    {
+      label: isUser && !isRegistrar && !isAdmin ? 'My Pending Transfers' : 'Pending Transfers',
+      value: summary?.pendingTransfers ?? 0,
+      icon:  ArrowLeftRight,
+      color: 'text-amber-600',
+      href:  ROUTES.TRANSFERS,
+    },
+    {
+      label: 'Open Disputes',
+      value: summary?.activeDisputes ?? 0,
+      icon:  AlertTriangle,
+      color: 'text-red-600',
+      href:  ROUTES.DISPUTES,
+    },
   ];
+
+  const registrarStats: StatCard[] = [
+    {
+      label: 'Pending Approvals',
+      value: summary?.pendingApprovals ?? 0,
+      icon:  ClipboardList,
+      color: 'text-amber-600',
+      href:  ROUTES.PENDING_QUEUE,
+      badge: (summary?.pendingApprovals ?? 0) > 0,
+    },
+  ];
+
+  const adminStats: StatCard[] = [
+    {
+      label: 'Pending Approvals',
+      value: summary?.pendingApprovals ?? 0,
+      icon:  ClipboardList,
+      color: 'text-amber-600',
+      href:  ROUTES.PENDING_QUEUE,
+      badge: (summary?.pendingApprovals ?? 0) > 0,
+    },
+  ];
+
+  const extraStats = isAdmin ? adminStats : isRegistrar ? registrarStats : [];
+  const allStats   = [...commonStats, ...extraStats];
 
   return (
     <div className="space-y-6">
@@ -46,22 +102,75 @@ export default function DashboardPage() {
           Welcome back, {user?.fullName?.split(' ')[0]}
         </h2>
         <p className="text-slate-500 text-sm">
-          Here&apos;s a summary of the BlockLand registry.
+          {isAdmin     ? 'System overview — BlockLand Registry administration.' :
+           isRegistrar ? 'Registrar dashboard — review and manage property submissions.' :
+                         'Here\'s a summary of your BlockLand portfolio.'}
         </p>
       </div>
 
       {/* Stat cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        {stats.map(({ label, value, icon: Icon, color }) => (
-          <div key={label} className="stat-card">
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{label}</p>
-              <Icon className={`w-4 h-4 ${color}`} />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {allStats.map(({ label, value, icon: Icon, color, href, badge }) => {
+          const card = (
+            <div className={`stat-card relative ${href ? 'cursor-pointer hover:shadow-md transition-shadow' : ''}`}>
+              {badge && value > 0 && (
+                <span className="absolute top-3 right-3 w-5 h-5 rounded-full bg-amber-500 text-white text-xs font-bold flex items-center justify-center">
+                  {value > 99 ? '99+' : value}
+                </span>
+              )}
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider pr-6">{label}</p>
+                <Icon className={`w-4 h-4 ${color} flex-shrink-0`} />
+              </div>
+              <p className="font-display text-3xl text-slate-900">{value}</p>
             </div>
-            <p className="font-display text-3xl text-slate-900">{value}</p>
-          </div>
-        ))}
+          );
+          return href ? (
+            <Link key={label} href={href}>{card}</Link>
+          ) : (
+            <div key={label}>{card}</div>
+          );
+        })}
       </div>
+
+      {/* Quick actions for registrar/admin */}
+      {(isAdmin || isRegistrar) && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <Link href={ROUTES.PENDING_QUEUE} className="card flex items-center gap-4 hover:shadow-md transition-shadow cursor-pointer group">
+            <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center flex-shrink-0 group-hover:bg-amber-200 transition-colors">
+              <ClipboardList className="w-5 h-5 text-amber-600" />
+            </div>
+            <div>
+              <p className="font-semibold text-slate-800">Pending Queue</p>
+              <p className="text-sm text-slate-500">
+                {(summary?.pendingApprovals ?? 0) > 0
+                  ? `${summary?.pendingApprovals} submission${summary?.pendingApprovals !== 1 ? 's' : ''} awaiting review`
+                  : 'No pending submissions'}
+              </p>
+            </div>
+          </Link>
+          {isAdmin && (
+            <Link href="/admin/approvals" className="card flex items-center gap-4 hover:shadow-md transition-shadow cursor-pointer group">
+              <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center flex-shrink-0 group-hover:bg-slate-200 transition-colors">
+                <Users className="w-5 h-5 text-slate-600" />
+              </div>
+              <div>
+                <p className="font-semibold text-slate-800">User Approvals</p>
+                <p className="text-sm text-slate-500">Review pending user registrations</p>
+              </div>
+            </Link>
+          )}
+          <Link href={ROUTES.PROPERTIES} className="card flex items-center gap-4 hover:shadow-md transition-shadow cursor-pointer group">
+            <div className="w-10 h-10 rounded-xl bg-teal-50 flex items-center justify-center flex-shrink-0 group-hover:bg-teal-100 transition-colors">
+              <ShieldCheck className="w-5 h-5 text-teal-600" />
+            </div>
+            <div>
+              <p className="font-semibold text-slate-800">All Properties</p>
+              <p className="text-sm text-slate-500">Search and manage registry entries</p>
+            </div>
+          </Link>
+        </div>
+      )}
 
       {/* Recent activity */}
       <div className="card">

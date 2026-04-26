@@ -1,19 +1,30 @@
 'use client';
 
-import { useState }    from 'react';
-import { useRouter }   from 'next/navigation';
-import { useForm }     from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { toast }       from 'sonner';
+import { useState, useEffect } from 'react';
+import { useRouter }           from 'next/navigation';
+import { useForm }             from 'react-hook-form';
+import { zodResolver }         from '@hookform/resolvers/zod';
+import { toast }               from 'sonner';
 import { createDisputeSchema, type CreateDisputeFormData, DISPUTE_TYPES } from '@/lib/schemas';
-import { disputeService } from '@/lib/api/services';
-import { useBlockchainStore } from '@/stores/blockchain.store';
-import { ROUTES }      from '@/lib/navigation';
+import { disputeService, propertyService } from '@/lib/api/services';
+import { useAuthStore }        from '@/stores/auth.store';
+import { useBlockchainStore }  from '@/stores/blockchain.store';
+import { ROUTES }              from '@/lib/navigation';
+import type { Property }       from '@/types';
 
 export default function NewDisputePage() {
   const router  = useRouter();
   const addTx   = useBlockchainStore((s) => s.addTx);
-  const [loading, setLoading] = useState(false);
+  const user    = useAuthStore((s) => s.user);
+  const [loading, setLoading]   = useState(false);
+  const [properties, setProperties] = useState<Property[]>([]);
+
+  useEffect(() => {
+    if (!user) return;
+    propertyService.getByOwner(user.id, {})
+      .then((res) => setProperties(res.data.filter((p) => p.status === 'ACTIVE')))
+      .catch(() => {});
+  }, [user]);
 
   const { register, handleSubmit, formState: { errors } } = useForm<CreateDisputeFormData>({
     resolver: zodResolver(createDisputeSchema),
@@ -44,8 +55,29 @@ export default function NewDisputePage() {
 
       <form onSubmit={handleSubmit(onSubmit)} className="card space-y-4">
         <div>
-          <label className="label">Property ID (UUID)</label>
-          <input className={`input font-mono ${errors.propertyId ? 'input-error' : ''}`} {...register('propertyId')} placeholder="00000000-0000-0000-0000-000000000000" />
+          <label className="label">Property</label>
+          {properties.length > 0 ? (
+            <select
+              className={`input ${errors.propertyId ? 'input-error' : ''}`}
+              {...register('propertyId')}
+            >
+              <option value="">— Select a property to dispute —</option>
+              {properties.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.plotNumber} — {p.address}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <>
+              <input
+                className={`input font-mono ${errors.propertyId ? 'input-error' : ''}`}
+                {...register('propertyId')}
+                placeholder="00000000-0000-0000-0000-000000000000"
+              />
+              <p className="field-hint">No active properties found. Enter UUID manually.</p>
+            </>
+          )}
           {errors.propertyId && <p className="error-msg">{errors.propertyId.message}</p>}
         </div>
 

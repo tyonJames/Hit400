@@ -4,7 +4,7 @@ import { useState }    from 'react';
 import { useForm }     from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast }       from 'sonner';
-import { Wallet, Key, User } from 'lucide-react';
+import { Wallet, Key, User, Copy, CheckCircle } from 'lucide-react';
 import {
   updateProfileSchema, changePasswordSchema, linkWalletSchema,
   type UpdateProfileFormData, type ChangePasswordFormData, type LinkWalletFormData,
@@ -17,6 +17,15 @@ export default function ProfilePage() {
   const user    = useAuthStore((s) => s.user);
   const setUser = useAuthStore((s) => s.setUser);
   const [connectingWallet, setConnectingWallet] = useState(false);
+  const [copiedId, setCopiedId] = useState(false);
+
+  function copyUserId() {
+    if (!user?.id) return;
+    navigator.clipboard.writeText(user.id).then(() => {
+      setCopiedId(true);
+      setTimeout(() => setCopiedId(false), 2000);
+    });
+  }
 
   const profileForm = useForm<UpdateProfileFormData>({ resolver: zodResolver(updateProfileSchema), defaultValues: { fullName: user?.fullName } });
   const passwordForm = useForm<ChangePasswordFormData>({ resolver: zodResolver(changePasswordSchema) });
@@ -76,9 +85,23 @@ export default function ProfilePage() {
           <User className="w-4 h-4 text-slate-400" />
           <h3 className="font-semibold text-slate-800">Profile</h3>
         </div>
-        <div className="text-sm text-slate-500 space-y-1">
+        <div className="text-sm text-slate-500 space-y-1.5">
           <p><span className="font-medium text-slate-700">Email:</span> {user?.email}</p>
           <p><span className="font-medium text-slate-700">Roles:</span> {user?.roles.join(', ')}</p>
+          <div className="flex items-center gap-2 pt-1">
+            <span className="font-medium text-slate-700">Your ID:</span>
+            <span className="font-mono text-xs text-slate-600 truncate max-w-xs">{user?.id}</span>
+            <button
+              onClick={copyUserId}
+              className="ml-auto flex items-center gap-1 text-xs text-primary hover:text-primary/80 transition-colors flex-shrink-0"
+            >
+              {copiedId
+                ? <><CheckCircle className="w-3.5 h-3.5 text-emerald-500" /> Copied</>
+                : <><Copy className="w-3.5 h-3.5" /> Copy</>
+              }
+            </button>
+          </div>
+          <p className="text-xs text-slate-400">Share your ID with a seller to be added as a buyer in a transfer.</p>
         </div>
         <form onSubmit={profileForm.handleSubmit(onUpdateProfile)} className="space-y-3 pt-2 border-t border-slate-100">
           <div>

@@ -22,7 +22,7 @@ export class DashboardService {
     const isRegistrar = user.roles.includes(UserRole.REGISTRAR);
     const isPrivileged = isAdmin || isRegistrar;
 
-    const [totalProperties, pendingTransfers, activeDisputes] = await Promise.all([
+    const [totalProperties, pendingTransfers, activeDisputes, pendingApprovals] = await Promise.all([
       isPrivileged
         ? this.propertyRepo.count({ where: { status: PropertyStatus.ACTIVE } })
         : this.propertyRepo.count({ where: { currentOwnerId: user.sub, status: PropertyStatus.ACTIVE } }),
@@ -36,6 +36,9 @@ export class DashboardService {
             { buyerId: user.sub,  status: TransferStatus.PENDING_BUYER },
           ]}),
       this.disputeRepo.count({ where: { status: DisputeStatus.OPEN } }),
+      isPrivileged
+        ? this.propertyRepo.count({ where: { status: PropertyStatus.PENDING_APPROVAL } })
+        : 0,
     ]);
 
     const recentActivity = await this.logRepo.find({
@@ -45,7 +48,7 @@ export class DashboardService {
       relations: ['user'],
     });
 
-    return { role: user.roles[0] ?? 'PUBLIC', totalProperties, pendingTransfers, activeDisputes, recentActivity };
+    return { role: user.roles[0] ?? 'PUBLIC', totalProperties, pendingTransfers, activeDisputes, pendingApprovals, recentActivity };
   }
 
   async getActivity(params: { page?: number; limit?: number }) {

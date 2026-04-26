@@ -31,8 +31,12 @@ export class AdminController {
   getStats() { return this.adminService.getStats(); }
 
   @Get('users')
-  listUsers(@Query('page') page?: number, @Query('limit') limit?: number) {
-    return this.adminService.listUsers({ page, limit });
+  listUsers(
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+    @Query('search') search?: string,
+  ) {
+    return this.adminService.listUsers({ page, limit, search });
   }
 
   @Patch('users/:userId/status')

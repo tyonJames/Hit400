@@ -197,6 +197,12 @@ export const adminService = {
     openDisputes: number; verificationCount: number;
   }>('/admin/stats'),
 
+  listUsers: (params?: { page?: number; limit?: number; search?: string }) =>
+    api.get<PaginatedResponse<AuthUser>>('/admin/users', params),
+
+  updateStatus: (userId: string, isActive: boolean) =>
+    api.patch<{ message: string }>(`/admin/users/${userId}/status`, { isActive }),
+
   getPendingUsers: () => api.get<PendingUser[]>('/admin/users/pending'),
 
   approveUser: (userId: string, roles: string[]) =>

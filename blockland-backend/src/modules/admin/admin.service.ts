@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository }       from 'typeorm';
+import { Repository, ILike } from 'typeorm';
 import { User }     from '../../database/entities/user.entity';
 import { Role }     from '../../database/entities/role.entity';
 import { UserRole } from '../../database/entities/user-role.entity';
@@ -63,15 +63,31 @@ export class AdminService {
     return { totalUsers, totalProperties, totalTransfers };
   }
 
-  async listUsers(params: { page?: number; limit?: number }) {
+  async listUsers(params: { page?: number; limit?: number; search?: string }) {
     const page  = params.page  ?? 1;
-    const limit = params.limit ?? 20;
-    const [data, total] = await this.userRepo.findAndCount({
-      order: { createdAt: 'DESC' },
-      skip:  (page - 1) * limit,
-      take:  limit,
+    const limit = params.limit ?? 50;
+    const whereClause = params.search
+      ? [{ fullName: ILike(`%${params.search}%`) }, { email: ILike(`%${params.search}%`) }]
+      : undefined;
+    const [raw, total] = await this.userRepo.findAndCount({
+      where:     whereClause,
+      order:     { createdAt: 'DESC' },
+      skip:      (page - 1) * limit,
+      take:      limit,
       relations: ['userRoles', 'userRoles.role'],
     });
+    const data = raw.map((u) => ({
+      id:            u.id,
+      email:         u.email,
+      fullName:      u.fullName,
+      nationalId:    u.nationalId,
+      phone:         u.phone,
+      roles:         u.userRoles?.map((ur) => ur.role?.name).filter(Boolean) ?? [],
+      walletAddress: u.walletAddress,
+      isActive:      u.isActive,
+      isApproved:    u.isApproved,
+      createdAt:     u.createdAt,
+    }));
     return { data, total, page, limit };
   }
 
