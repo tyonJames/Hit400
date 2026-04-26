@@ -32,7 +32,8 @@ export default function ListingDetailPage() {
   const [interestMsg, setInterestMsg] = useState('');
   const [showInterestForm, setShowInterestForm] = useState(false);
   const [selectModal, setSelectModal] = useState<{ interestId: string; buyerName: string } | null>(null);
-  const [paymentMethod, setPaymentMethod] = useState('');
+  const [paymentMethod, setPaymentMethod]           = useState('');
+  const [paymentInstructions, setPaymentInstructions] = useState('');
 
   async function load() {
     setLoading(true);
@@ -72,12 +73,13 @@ export default function ListingDetailPage() {
 
   async function handleSelectBuyer() {
     if (!selectModal || !paymentMethod) return;
+    if (!paymentInstructions.trim()) return toast.error('Payment instructions are required so the buyer knows where to send payment.');
     setSelectingId(selectModal.interestId);
     try {
-      const transfer = await marketplaceService.selectBuyer(id, selectModal.interestId, paymentMethod);
+      const transfer = await marketplaceService.selectBuyer(id, selectModal.interestId, paymentMethod, paymentInstructions.trim());
       toast.success('Buyer selected! Transfer initiated — awaiting registrar review of terms.');
       router.push(ROUTES.TRANSFER(transfer.id));
-    } catch (err: any) { toast.error(err?.message); } finally { setSelectingId(null); setSelectModal(null); }
+    } catch (err: any) { toast.error(err?.message); } finally { setSelectingId(null); setSelectModal(null); setPaymentInstructions(''); }
   }
 
   if (loading) return <div className="skeleton h-96 rounded-card" />;
@@ -347,15 +349,37 @@ export default function ListingDetailPage() {
                 ))}
               </select>
             </div>
+            <div>
+              <label className="label">
+                Payment Instructions <span className="text-red-500">*</span>
+              </label>
+              <textarea
+                className="input"
+                rows={4}
+                value={paymentInstructions}
+                onChange={(e) => setPaymentInstructions(e.target.value)}
+                placeholder={
+                  paymentMethod === 'ECOCASH'       ? 'e.g. Send to 0771 234 567, name: Tinashe Moyo' :
+                  paymentMethod === 'ZIPIT'          ? 'e.g. CBZ Account: 12345678, Branch: Harare CBD' :
+                  paymentMethod === 'BANK_TRANSFER'  ? 'e.g. CABS USD Account: 9876543, Ref: PLOT-A1' :
+                  paymentMethod === 'CASH'           ? 'e.g. Contact me to arrange handover in Harare' :
+                  'Enter your payment account details and any reference instructions…'
+                }
+                maxLength={500}
+              />
+              <p className="text-xs text-slate-400 mt-1">
+                These details will only be visible to the selected buyer on their transfer page.
+              </p>
+            </div>
             <div className="flex gap-3">
               <button
                 onClick={handleSelectBuyer}
-                disabled={!paymentMethod || !!selectingId}
+                disabled={!paymentMethod || !paymentInstructions.trim() || !!selectingId}
                 className="btn-primary flex-1"
               >
                 {selectingId ? 'Processing…' : 'Confirm & Initiate Transfer'}
               </button>
-              <button onClick={() => { setSelectModal(null); setPaymentMethod(''); }} className="btn-ghost">
+              <button onClick={() => { setSelectModal(null); setPaymentMethod(''); setPaymentInstructions(''); }} className="btn-ghost">
                 Cancel
               </button>
             </div>

@@ -95,8 +95,9 @@ export class MarketplaceController {
     @Param('id') id: string,
     @Param('interestId') interestId: string,
     @Body('paymentMethod') paymentMethod: string,
+    @Body('paymentInstructions') paymentInstructions: string,
     @CurrentUser() user: JwtPayload,
   ) {
-    return this.marketplaceService.selectBuyer(id, interestId, paymentMethod, user);
+    return this.marketplaceService.selectBuyer(id, interestId, paymentMethod, paymentInstructions, user);
   }
 }

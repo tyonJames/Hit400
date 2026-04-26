@@ -76,6 +76,9 @@ export class Transfer extends BaseEntity {
   @Column({ name: 'seller_confirmed_at', type: 'timestamptz', nullable: true })
   sellerConfirmedAt: Date | null;
 
+  @Column({ name: 'payment_instructions', type: 'text', nullable: true })
+  paymentInstructions: string | null;
+
   // ── Relations ────────────────────────────────────────────────────────────
   @ManyToOne(() => Property, (prop) => prop.transfers, { onDelete: 'RESTRICT' })
   @JoinColumn({ name: 'property_id' })

@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Link  from 'next/link';
 import {
   ArrowLeft, CheckCircle, XCircle, Upload, Download,
-  AlertTriangle, FileText, Clock,
+  AlertTriangle, FileText, Clock, CreditCard,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { transferService } from '@/lib/api/services';
@@ -406,6 +406,28 @@ export default function TransferDetailPage() {
                 <button onClick={() => { setRejectModal(false); setRejectNote(''); }} className="btn-ghost">Cancel</button>
               </div>
             </div>
+          )}
+        </div>
+      )}
+
+      {/* Payment instructions — shown to buyer (AWAITING_POP) and registrar (PENDING_REGISTRAR_FINAL) */}
+      {transfer.paymentInstructions && (isBuyer && transfer.status === 'AWAITING_POP' || isRegistrar && transfer.status === 'PENDING_REGISTRAR_FINAL') && (
+        <div className="card border border-blue-200 bg-blue-50 space-y-2">
+          <div className="flex items-center gap-2">
+            <CreditCard className="w-4 h-4 text-blue-600 shrink-0" />
+            <p className="font-medium text-blue-800 text-sm">
+              {isBuyer ? 'Payment Instructions from Seller' : 'Declared Payment Instructions'}
+            </p>
+          </div>
+          <p className="text-sm text-blue-900 whitespace-pre-wrap leading-relaxed bg-white border border-blue-100 rounded-lg px-3 py-2.5">
+            {transfer.paymentInstructions}
+          </p>
+          {isBuyer && (
+            <p className="text-xs text-blue-600">
+              Use these details to make your payment via{' '}
+              <span className="font-semibold">{PAYMENT_LABELS[transfer.paymentMethod ?? ''] ?? transfer.paymentMethod}</span>,
+              then upload your proof of payment below.
+            </p>
           )}
         </div>
       )}

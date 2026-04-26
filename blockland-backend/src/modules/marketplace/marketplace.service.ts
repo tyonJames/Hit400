@@ -195,7 +195,7 @@ export class MarketplaceService {
 
   // ── Select buyer → creates transfer ─────────────────────────────────────
 
-  async selectBuyer(listingId: string, interestId: string, paymentMethod: string, user: JwtPayload) {
+  async selectBuyer(listingId: string, interestId: string, paymentMethod: string, paymentInstructions: string, user: JwtPayload) {
     const listing = await this.listingRepo.findOne({
       where:     { id: listingId, status: ListingStatus.ACTIVE },
       relations: ['property'],
@@ -229,16 +229,17 @@ export class MarketplaceService {
 
       // Create marketplace transfer
       return em.save(em.create(Transfer, {
-        propertyId:          listing.propertyId,
-        sellerId:            user.sub,
-        buyerId:             interest.buyerId,
-        status:              TransferStatus.PENDING_REGISTRAR_TERMS,
+        propertyId:           listing.propertyId,
+        sellerId:             user.sub,
+        buyerId:              interest.buyerId,
+        status:               TransferStatus.PENDING_REGISTRAR_TERMS,
         marketplaceListingId: listingId,
         paymentMethod,
-        minPrice:            listing.minPrice,
-        maxPrice:            listing.maxPrice,
-        saleValue:           null,
-        notes:               null,
+        paymentInstructions:  paymentInstructions || null,
+        minPrice:             listing.minPrice,
+        maxPrice:             listing.maxPrice,
+        saleValue:            null,
+        notes:                null,
       }));
     });
 

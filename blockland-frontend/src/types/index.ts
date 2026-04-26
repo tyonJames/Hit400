@@ -114,6 +114,7 @@ export interface Transfer {
   popFileName?:          string | null;
   popUploadedAt?:        string | null;
   sellerConfirmedAt?:    string | null;
+  paymentInstructions?:  string | null;
   property?:        Property;
   seller?:          PublicUser;
   buyer?:           PublicUser;

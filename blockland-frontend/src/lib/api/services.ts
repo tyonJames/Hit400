@@ -177,8 +177,8 @@ export const marketplaceService = {
   withdrawInterest: (id: string) =>
     api.del<{ message: string }>(`/marketplace/${id}/interest`),
 
-  selectBuyer: (listingId: string, interestId: string, paymentMethod: string) =>
-    api.post<Transfer>(`/marketplace/${listingId}/select/${interestId}`, { paymentMethod }),
+  selectBuyer: (listingId: string, interestId: string, paymentMethod: string, paymentInstructions: string) =>
+    api.post<Transfer>(`/marketplace/${listingId}/select/${interestId}`, { paymentMethod, paymentInstructions }),
 };
 
 export const disputeService = {
