@@ -107,46 +107,32 @@ export class MessagesService {
     }) as Promise<Message>;
   }
 
-  async getInbox(userId: string, params: { page?: number; limit?: number }) {
-    const page  = +(params.page  ?? 1) || 1;
-    const limit = +(params.limit ?? 20) || 20;
-
-    const [rows, total] = await this.messageRepo
+  async getInbox(userId: string): Promise<any[]> {
+    const rows = await this.messageRepo
       .createQueryBuilder('m')
       .innerJoin('m.recipients', 'r', 'r.recipient_id = :uid', { uid: userId })
       .leftJoinAndSelect('m.sender', 'sender')
       .leftJoinAndSelect('m.transfer', 't')
       .leftJoinAndSelect('t.property', 'p')
-      .addSelect('r.read_at', 'readAt')
       .orderBy('m.createdAt', 'DESC')
-      .skip((page - 1) * limit)
-      .take(limit)
-      .getManyAndCount();
+      .take(100)
+      .getMany();
 
-    // Attach readAt per message for this user
-    const withRead = await Promise.all(rows.map(async (msg) => {
+    return Promise.all(rows.map(async (msg) => {
       const rec = await this.recipientRepo.findOne({
         where: { messageId: msg.id, recipientId: userId },
       });
       return { ...msg, readAt: rec?.readAt ?? null };
     }));
-
-    return { data: withRead, total, page, limit };
   }
 
-  async getSent(userId: string, params: { page?: number; limit?: number }) {
-    const page  = +(params.page  ?? 1) || 1;
-    const limit = +(params.limit ?? 20) || 20;
-
-    const [data, total] = await this.messageRepo.findAndCount({
+  async getSent(userId: string): Promise<Message[]> {
+    return this.messageRepo.find({
       where:     { senderId: userId },
       relations: ['transfer', 'transfer.property', 'recipients', 'recipients.recipient'],
       order:     { createdAt: 'DESC' },
-      skip:      (page - 1) * limit,
-      take:      limit,
+      take:      100,
     });
-
-    return { data, total, page, limit };
   }
 
   async getById(id: string, userId: string): Promise<Message & { readAt: Date | null }> {

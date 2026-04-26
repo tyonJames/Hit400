@@ -244,11 +244,11 @@ export const messageService = {
     return api.post<import('@/types').Message>('/messages', data);
   },
 
-  getInbox: (params?: { page?: number; limit?: number }) =>
-    api.get<import('@/types').PaginatedResponse<import('@/types').Message>>('/messages/inbox', params),
+  getInbox: () =>
+    api.get<import('@/types').Message[]>('/messages/inbox'),
 
-  getSent: (params?: { page?: number; limit?: number }) =>
-    api.get<import('@/types').PaginatedResponse<import('@/types').Message>>('/messages/sent', params),
+  getSent: () =>
+    api.get<import('@/types').Message[]>('/messages/sent'),
 
   getUnreadCount: () =>
     api.get<number>('/messages/unread-count'),

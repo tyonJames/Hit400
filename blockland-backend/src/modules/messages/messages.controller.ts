@@ -28,21 +28,13 @@ export class MessagesController {
   }
 
   @Get('inbox')
-  getInbox(
-    @CurrentUser() user: JwtPayload,
-    @Query('page')  page?:  number,
-    @Query('limit') limit?: number,
-  ) {
-    return this.messagesService.getInbox(user.sub, { page, limit });
+  getInbox(@CurrentUser() user: JwtPayload) {
+    return this.messagesService.getInbox(user.sub);
   }
 
   @Get('sent')
-  getSent(
-    @CurrentUser() user: JwtPayload,
-    @Query('page')  page?:  number,
-    @Query('limit') limit?: number,
-  ) {
-    return this.messagesService.getSent(user.sub, { page, limit });
+  getSent(@CurrentUser() user: JwtPayload) {
+    return this.messagesService.getSent(user.sub);
   }
 
   @Get('unread-count')

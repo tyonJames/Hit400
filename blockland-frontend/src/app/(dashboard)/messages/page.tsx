@@ -19,8 +19,6 @@ export default function MessagesPage() {
   const [tab, setTab]         = useState<Tab>('inbox');
   const [view, setView]       = useState<View>('list');
   const [messages, setMessages] = useState<Message[]>([]);
-  const [total, setTotal]     = useState(0);
-  const [page, setPage]       = useState(1);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Message | null>(null);
 
@@ -36,18 +34,17 @@ export default function MessagesPage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = tab === 'inbox'
-        ? await messageService.getInbox({ page, limit: 15 })
-        : await messageService.getSent({ page, limit: 15 });
-      setMessages(res.data);
-      setTotal(res.total);
+      const data = tab === 'inbox'
+        ? await messageService.getInbox()
+        : await messageService.getSent();
+      setMessages(Array.isArray(data) ? data : []);
     } finally {
       setLoading(false);
     }
-  }, [tab, page]);
+  }, [tab]);
 
   useEffect(() => { load(); }, [load]);
-  useEffect(() => { setPage(1); setSelected(null); setView('list'); }, [tab]);
+  useEffect(() => { setSelected(null); setView('list'); }, [tab]);
 
   // Load user's transfers for the compose dropdown
   useEffect(() => {
@@ -86,7 +83,6 @@ export default function MessagesPage() {
     }
   }
 
-  const totalPages = Math.ceil(total / 15);
 
   return (
     <div className="max-w-3xl space-y-0">
@@ -307,8 +303,8 @@ export default function MessagesPage() {
               >
                 {t === 'inbox' ? <Inbox className="w-4 h-4" /> : <Send className="w-4 h-4" />}
                 {t.charAt(0).toUpperCase() + t.slice(1)}
-                {t === 'inbox' && total > 0 && (
-                  <span className="text-xs bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded-full">{total}</span>
+                {t === 'inbox' && messages.length > 0 && (
+                  <span className="text-xs bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded-full">{messages.length}</span>
                 )}
               </button>
             ))}
@@ -376,26 +372,6 @@ export default function MessagesPage() {
             </div>
           )}
 
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between px-5 py-3 border-t border-slate-100">
-              <button
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={page === 1}
-                className="btn-ghost text-sm py-1"
-              >
-                Previous
-              </button>
-              <span className="text-slate-500 text-sm">Page {page} of {totalPages}</span>
-              <button
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                disabled={page === totalPages}
-                className="btn-ghost text-sm py-1"
-              >
-                Next
-              </button>
-            </div>
-          )}
         </div>
       )}
     </div>
