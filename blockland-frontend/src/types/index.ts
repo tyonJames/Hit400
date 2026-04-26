@@ -81,7 +81,14 @@ export interface PropertyDocument {
   uploadedAt:    string;
 }
 
-export type TransferStatus = 'PENDING_BUYER' | 'PENDING_REGISTRAR' | 'CONFIRMED' | 'CANCELLED';
+export type TransferStatus =
+  | 'PENDING_BUYER' | 'PENDING_REGISTRAR'
+  | 'PENDING_REGISTRAR_TERMS' | 'AWAITING_POP'
+  | 'PENDING_SELLER_CONFIRMATION' | 'PENDING_REGISTRAR_FINAL'
+  | 'CONFIRMED' | 'CANCELLED' | 'REJECTED';
+
+export type ListingStatus  = 'ACTIVE' | 'SOLD' | 'CANCELLED';
+export type InterestStatus = 'PENDING' | 'SELECTED' | 'NOT_SELECTED' | 'WITHDRAWN';
 export type ApproverRole   = 'BUYER' | 'REGISTRAR';
 export type ApprovalAction = 'APPROVED' | 'REJECTED';
 
@@ -97,12 +104,49 @@ export interface Transfer {
   saleValue:        number | null;
   blockchainTxHash: string | null;
   notes:            string | null;
+  // Marketplace-flow fields
+  marketplaceListingId?: string | null;
+  paymentMethod?:        string | null;
+  minPrice?:             number | null;
+  maxPrice?:             number | null;
+  rejectionNote?:        string | null;
+  cancellationNote?:     string | null;
+  popFileName?:          string | null;
+  popUploadedAt?:        string | null;
+  sellerConfirmedAt?:    string | null;
   property?:        Property;
   seller?:          PublicUser;
   buyer?:           PublicUser;
   approvals?:       TransferApproval[];
   createdAt:        string;
   updatedAt:        string;
+}
+
+export interface MarketplaceListing {
+  id:             string;
+  propertyId:     string;
+  sellerId:       string;
+  minPrice:       number;
+  maxPrice:       number;
+  paymentMethods: string[];
+  description:    string;
+  status:         ListingStatus;
+  property?:      Property;
+  seller?:        PublicUser;
+  interests?:     BuyerInterest[];
+  myInterest?:    BuyerInterest | null;
+  createdAt:      string;
+  updatedAt:      string;
+}
+
+export interface BuyerInterest {
+  id:        string;
+  listingId: string;
+  buyerId:   string;
+  message:   string | null;
+  status:    InterestStatus;
+  buyer?:    PublicUser;
+  createdAt: string;
 }
 
 export interface TransferApproval {

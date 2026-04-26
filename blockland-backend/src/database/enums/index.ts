@@ -57,10 +57,38 @@ export enum AcquisitionType {
 }
 
 export enum TransferStatus {
+  // Direct transfer flow
   PENDING_BUYER     = 'PENDING_BUYER',
   PENDING_REGISTRAR = 'PENDING_REGISTRAR',
-  CONFIRMED         = 'CONFIRMED',
-  CANCELLED         = 'CANCELLED',
+  // Marketplace flow
+  PENDING_REGISTRAR_TERMS      = 'PENDING_REGISTRAR_TERMS',
+  AWAITING_POP                 = 'AWAITING_POP',
+  PENDING_SELLER_CONFIRMATION  = 'PENDING_SELLER_CONFIRMATION',
+  PENDING_REGISTRAR_FINAL      = 'PENDING_REGISTRAR_FINAL',
+  // Terminal states (shared)
+  CONFIRMED = 'CONFIRMED',
+  CANCELLED = 'CANCELLED',
+  REJECTED  = 'REJECTED',
+}
+
+export enum ListingStatus {
+  ACTIVE    = 'ACTIVE',
+  SOLD      = 'SOLD',
+  CANCELLED = 'CANCELLED',
+}
+
+export enum InterestStatus {
+  PENDING      = 'PENDING',
+  SELECTED     = 'SELECTED',
+  NOT_SELECTED = 'NOT_SELECTED',
+  WITHDRAWN    = 'WITHDRAWN',
+}
+
+export enum PaymentMethod {
+  ECOCASH       = 'ECOCASH',
+  ZIPIT         = 'ZIPIT',
+  BANK_TRANSFER = 'BANK_TRANSFER',
+  CASH          = 'CASH',
 }
 
 export enum ApproverRole {

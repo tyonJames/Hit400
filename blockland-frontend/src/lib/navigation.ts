@@ -27,6 +27,10 @@ export const ROUTES = {
   ADMIN_REGISTRARS: '/admin/registrars',
   ADMIN_LOGS:       '/admin/logs',
   ADMIN_APPROVALS:  '/admin/approvals',
+  MARKETPLACE:      '/marketplace',
+  MARKETPLACE_NEW:  '/marketplace/new',
+  MARKETPLACE_MY:   '/marketplace/my-listings',
+  MARKETPLACE_ITEM: (id: string) => `/marketplace/${id}`,
 } as const;
 
 export function getPostLoginRedirect(roles: UserRole[]): string {
@@ -79,6 +83,14 @@ export const SIDEBAR_NAV: NavItem[] = [
       { label: 'User Management',   href: ROUTES.ADMIN_USERS,      icon: 'Users',     roles: ['ADMIN'] },
       { label: 'Registrar Control', href: ROUTES.ADMIN_REGISTRARS, icon: 'UserCheck', roles: ['ADMIN'] },
       { label: 'Activity Logs',     href: ROUTES.ADMIN_LOGS,       icon: 'Activity',  roles: ['ADMIN'] },
+    ],
+  },
+  {
+    label: 'Marketplace', href: ROUTES.MARKETPLACE, icon: 'Store',
+    children: [
+      { label: 'Browse Listings',  href: ROUTES.MARKETPLACE,     icon: 'ShoppingBag' },
+      { label: 'My Listings',      href: ROUTES.MARKETPLACE_MY,  icon: 'Tag',        roles: ['USER', 'REGISTRAR'] },
+      { label: 'Create Listing',   href: ROUTES.MARKETPLACE_NEW, icon: 'PlusCircle', roles: ['USER', 'REGISTRAR'] },
     ],
   },
   { label: 'Verification Portal', href: ROUTES.VERIFY,   icon: 'Search' },

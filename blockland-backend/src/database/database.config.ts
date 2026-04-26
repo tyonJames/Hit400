@@ -43,8 +43,10 @@ import { TransferApproval }   from './entities/transfer-approval.entity';
 import { Dispute }            from './entities/dispute.entity';
 import { DisputeEvidence }    from './entities/dispute-evidence.entity';
 import { DisputeResolution }  from './entities/dispute-resolution.entity';
-import { VerificationLog }    from './entities/verification-log.entity';
-import { ActivityLog }        from './entities/activity-log.entity';
+import { VerificationLog }     from './entities/verification-log.entity';
+import { ActivityLog }         from './entities/activity-log.entity';
+import { MarketplaceListing }  from './entities/marketplace-listing.entity';
+import { BuyerInterest }       from './entities/buyer-interest.entity';
 
 /**
  * Returns the TypeORM DataSourceOptions based on the current environment.
@@ -94,6 +96,8 @@ export function getDatabaseConfig(): DataSourceOptions {
       DisputeResolution,
       VerificationLog,
       ActivityLog,
+      MarketplaceListing,
+      BuyerInterest,
     ],
 
     // ---------------------------------------------------------------------------

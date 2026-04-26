@@ -45,6 +45,38 @@ export class Transfer extends BaseEntity {
   @Column({ name: 'notes', type: 'varchar', length: 500, nullable: true })
   notes: string | null;
 
+  // ── Marketplace-flow fields ──────────────────────────────────────────────
+  @Column({ name: 'marketplace_listing_id', type: 'uuid', nullable: true })
+  marketplaceListingId: string | null;
+
+  @Column({ name: 'payment_method', type: 'varchar', length: 30, nullable: true })
+  paymentMethod: string | null;
+
+  @Column({ name: 'min_price', type: 'decimal', precision: 15, scale: 2, nullable: true })
+  minPrice: number | null;
+
+  @Column({ name: 'max_price', type: 'decimal', precision: 15, scale: 2, nullable: true })
+  maxPrice: number | null;
+
+  @Column({ name: 'rejection_note', type: 'varchar', length: 500, nullable: true })
+  rejectionNote: string | null;
+
+  @Column({ name: 'cancellation_note', type: 'varchar', length: 500, nullable: true })
+  cancellationNote: string | null;
+
+  @Column({ name: 'pop_file_name', type: 'varchar', length: 255, nullable: true })
+  popFileName: string | null;
+
+  @Column({ name: 'pop_file_path', type: 'varchar', length: 500, nullable: true })
+  popFilePath: string | null;
+
+  @Column({ name: 'pop_uploaded_at', type: 'timestamptz', nullable: true })
+  popUploadedAt: Date | null;
+
+  @Column({ name: 'seller_confirmed_at', type: 'timestamptz', nullable: true })
+  sellerConfirmedAt: Date | null;
+
+  // ── Relations ────────────────────────────────────────────────────────────
   @ManyToOne(() => Property, (prop) => prop.transfers, { onDelete: 'RESTRICT' })
   @JoinColumn({ name: 'property_id' })
   property: Property;

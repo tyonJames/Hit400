@@ -7,6 +7,7 @@ import {
   ShieldCheck, Search, User, FilePlus, List, Briefcase,
   Send, Repeat, MessageSquareWarning, PlusCircle, UserCheck,
   Users, Activity, ChevronDown, ChevronRight, ClipboardList,
+  Store, ShoppingBag, Tag, UserPlus,
 } from 'lucide-react';
 import { useState }              from 'react';
 import { useAuthStore }          from '@/stores/auth.store';
@@ -17,7 +18,8 @@ const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   LayoutDashboard, MapPin, ArrowLeftRight, AlertTriangle,
   ShieldCheck, Search, User, FilePlus, List, Briefcase,
   Send, Repeat, MessageSquareWarning, PlusCircle, UserCheck,
-  Users, Activity, ClipboardList,
+  Users, Activity, ClipboardList, UserPlus,
+  Store, ShoppingBag, Tag,
 };
 
 export function Sidebar() {

@@ -7,6 +7,7 @@ import type {
   AuthTokensResponse, AuthUser, Property, PaginatedResponse,
   Transfer, Dispute, OwnershipRecord, VerificationResult,
   DashboardSummary, ActivityLog, PropertyDocument, DisputeEvidence,
+  MarketplaceListing, BuyerInterest,
 } from '@/types';
 
 export const authService = {
@@ -123,8 +124,61 @@ export const transferService = {
       `/transfers/${id}/registrar-approve`, { notes }
     ),
 
-  cancel: (id: string, notes?: string) =>
-    api.patch<Transfer>(`/transfers/${id}/cancel`, { notes }),
+  cancel: (id: string, note: string) =>
+    api.patch<Transfer>(`/transfers/${id}/cancel`, { note }),
+
+  // Marketplace flow
+  reviewTerms: (id: string, action: 'APPROVE' | 'REJECT', note: string) =>
+    api.patch<Transfer>(`/transfers/${id}/review-terms`, { action, note }),
+
+  uploadPop: (id: string, file: File) => {
+    const form = new FormData();
+    form.append('file', file);
+    return api.upload<Transfer>(`/transfers/${id}/pop`, form);
+  },
+
+  sellerConfirm: (id: string, confirmed: boolean, note: string) =>
+    api.patch<Transfer>(`/transfers/${id}/seller-confirm`, { confirmed, note }),
+
+  registrarComplete: (id: string, notes?: string) =>
+    api.patch<{ transfer: Transfer; blockchainTxHash: string }>(
+      `/transfers/${id}/registrar-complete`, { notes }
+    ),
+
+  getPopUrl: (id: string) => {
+    const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api/v1';
+    return `${BASE_URL}/transfers/${id}/pop`;
+  },
+};
+
+export const marketplaceService = {
+  list: (params?: { page?: number; limit?: number; search?: string; minPrice?: number; maxPrice?: number }) =>
+    api.get<PaginatedResponse<MarketplaceListing>>('/marketplace', params),
+
+  getMy: () => api.get<MarketplaceListing[]>('/marketplace/my'),
+
+  getById: (id: string) =>
+    api.get<MarketplaceListing & { myInterest: BuyerInterest | null }>(`/marketplace/${id}`),
+
+  create: (data: { propertyId: string; minPrice: number; maxPrice: number; paymentMethods: string[]; description: string }) =>
+    api.post<MarketplaceListing>('/marketplace', data),
+
+  update: (id: string, data: Partial<{ minPrice: number; maxPrice: number; paymentMethods: string[]; description: string }>) =>
+    api.patch<MarketplaceListing>(`/marketplace/${id}`, data),
+
+  delist: (id: string) => api.del<{ message: string }>(`/marketplace/${id}`),
+
+  getInterests: (id: string) =>
+    api.get<BuyerInterest[]>(`/marketplace/${id}/interests`),
+
+  expressInterest: (id: string, message?: string) =>
+    api.post<BuyerInterest>(`/marketplace/${id}/interest`, { message }),
+
+  withdrawInterest: (id: string) =>
+    api.del<{ message: string }>(`/marketplace/${id}/interest`),
+
+  selectBuyer: (listingId: string, interestId: string, paymentMethod: string) =>
+    api.post<Transfer>(`/marketplace/${listingId}/select/${interestId}`, { paymentMethod }),
 };
 
 export const disputeService = {
