@@ -30,10 +30,12 @@ export default function PropertyDetailPage() {
   const { id }      = useParams<{ id: string }>();
   const isRegistrar = useAuthStore((s) => s.isRegistrar());
   const isAdmin     = useAuthStore((s) => s.isAdmin());
+  const currentUser = useAuthStore((s) => s.user);
 
   const [property, setProperty]   = useState<Property | null>(null);
   const [loading, setLoading]     = useState(true);
-  const [actioning, setActioning] = useState(false);
+  const [actioning, setActioning]   = useState(false);
+  const [resubmitting, setResubmitting] = useState(false);
   const [declineComment, setDeclineComment]   = useState('');
   const [showDeclineForm, setShowDeclineForm] = useState(false);
   const [copied, setCopied]       = useState(false);
@@ -59,6 +61,20 @@ export default function PropertyDetailPage() {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     });
+  }
+
+  async function handleResubmit() {
+    if (!property) return;
+    setResubmitting(true);
+    try {
+      const updated = await propertyService.resubmit(property.id);
+      setProperty(updated as Property);
+      toast.success('Property resubmitted for review.');
+    } catch (err: any) {
+      toast.error(err?.message ?? 'Resubmission failed.');
+    } finally {
+      setResubmitting(false);
+    }
   }
 
   async function handleApprove() {
@@ -172,13 +188,22 @@ export default function PropertyDetailPage() {
       {isDeclined && (
         <div className="flex items-start gap-3 bg-red-50 border border-red-200 rounded-xl p-4">
           <XCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
-          <div>
+          <div className="flex-1">
             <p className="font-medium text-red-800">Registration Declined</p>
             {property.registrationComment && (
               <p className="text-sm text-red-700 mt-0.5">
                 <span className="font-medium">Registrar's note: </span>
                 {property.registrationComment}
               </p>
+            )}
+            {!isRegistrar && !isAdmin && currentUser?.id === property.currentOwnerId && (
+              <button
+                onClick={handleResubmit}
+                disabled={resubmitting}
+                className="btn-primary mt-3 text-sm"
+              >
+                {resubmitting ? 'Resubmitting…' : 'Resubmit for Review'}
+              </button>
             )}
           </div>
         </div>

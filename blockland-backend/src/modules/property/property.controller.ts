@@ -55,6 +55,15 @@ export class PropertyController {
     return this.propertyService.approve(id, user);
   }
 
+  @Patch(':id/resubmit')
+  @Roles(UserRole.USER, UserRole.REGISTRAR, UserRole.ADMIN)
+  resubmit(
+    @Param('id') id: string,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    return this.propertyService.resubmit(id, user.sub);
+  }
+
   @Patch(':id/decline')
   @Roles(UserRole.REGISTRAR, UserRole.ADMIN)
   decline(

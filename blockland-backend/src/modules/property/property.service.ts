@@ -2,7 +2,7 @@ import {
   Injectable, NotFoundException, ConflictException, BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource, FindOptionsWhere, In } from 'typeorm';
+import { Repository, DataSource, FindOptionsWhere, In, ILike } from 'typeorm';
 import { ConfigService }    from '@nestjs/config';
 import * as crypto          from 'crypto';
 import * as fs              from 'fs';
@@ -252,9 +252,18 @@ export class PropertyService {
   }) {
     const page  = +(params.page  ?? 1) || 1;
     const limit = +(params.limit ?? 20) || 20;
-    const where: FindOptionsWhere<Property> = {};
-    if (params.status)     where.status     = params.status;
-    if (params.zoningType) where.zoningType = params.zoningType as any;
+
+    const base: FindOptionsWhere<Property> = {};
+    if (params.status)     base.status     = params.status;
+    if (params.zoningType) base.zoningType = params.zoningType as any;
+
+    const where: FindOptionsWhere<Property>[] = params.search
+      ? [
+          { ...base, plotNumber:      ILike(`%${params.search}%`) },
+          { ...base, address:         ILike(`%${params.search}%`) },
+          { ...base, titleDeedNumber: ILike(`%${params.search}%`) },
+        ]
+      : [base];
 
     const [data, total] = await this.propertyRepo.findAndCount({
       where,
@@ -264,6 +273,26 @@ export class PropertyService {
       relations: ['currentOwner'],
     });
     return { data, total, page, limit };
+  }
+
+  async resubmit(id: string, userId: string) {
+    const property = await this.propertyRepo.findOne({
+      where: { id, status: PropertyStatus.DECLINED, currentOwnerId: userId },
+    });
+    if (!property) throw new NotFoundException('Property not found, not in declined state, or you are not the owner.');
+
+    await this.propertyRepo.update({ id }, {
+      status:              PropertyStatus.PENDING_APPROVAL,
+      registrationComment: null,
+    });
+
+    await this.activityLogService.log({
+      userId, action: 'PROPERTY_RESUBMITTED',
+      entityType: 'Property', entityId: id,
+      metadata: { plotNumber: property.plotNumber },
+    });
+
+    return this.propertyRepo.findOne({ where: { id }, relations: ['currentOwner', 'documents'] });
   }
 
   async findOne(id: string) {

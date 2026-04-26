@@ -11,6 +11,7 @@ export const ROUTES = {
   REGISTER:        '/auth/register',
   DASHBOARD:       '/dashboard',
   PROPERTIES:      '/properties',
+  PENDING_QUEUE:   '/properties/pending',
   NEW_PROPERTY:    '/properties/new',
   PROPERTY:        (id: string) => `/properties/${id}`,
   TRANSFERS:       '/transfers',
@@ -49,9 +50,10 @@ export const SIDEBAR_NAV: NavItem[] = [
   {
     label: 'Properties', href: ROUTES.PROPERTIES, icon: 'MapPin',
     children: [
-      { label: 'All Properties',    href: ROUTES.PROPERTIES,  icon: 'List',      roles: ['REGISTRAR', 'ADMIN'] },
-      { label: 'My Portfolio',      href: ROUTES.PROPERTIES,  icon: 'Briefcase', roles: ['USER'] },
-      { label: 'Register Property', href: ROUTES.NEW_PROPERTY,icon: 'FilePlus',  roles: ['REGISTRAR', 'USER'] },
+      { label: 'Pending Queue',     href: ROUTES.PENDING_QUEUE, icon: 'ClipboardList', roles: ['REGISTRAR', 'ADMIN'] },
+      { label: 'All Properties',    href: ROUTES.PROPERTIES,    icon: 'List',          roles: ['REGISTRAR', 'ADMIN'] },
+      { label: 'My Portfolio',      href: ROUTES.PROPERTIES,    icon: 'Briefcase',     roles: ['USER'] },
+      { label: 'Register Property', href: ROUTES.NEW_PROPERTY,  icon: 'FilePlus',      roles: ['REGISTRAR', 'USER'] },
     ],
   },
   {

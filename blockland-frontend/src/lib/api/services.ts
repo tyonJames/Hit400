@@ -56,6 +56,9 @@ export const propertyService = {
   decline: (id: string, comment: string) =>
     api.patch<Property>(`/properties/${id}/decline`, { comment }),
 
+  resubmit: (id: string) =>
+    api.patch<Property>(`/properties/${id}/resubmit`, {}),
+
   list: (params?: {
     page?: number; limit?: number; status?: string;
     zoningType?: string; search?: string;
