@@ -4,6 +4,7 @@ import { AdminService }  from './admin.service';
 import { Roles }         from '../../common/decorators/roles.decorator';
 import { CurrentUser }   from '../../common/decorators/current-user.decorator';
 import { UserRole }      from '../../database/enums';
+import { JwtPayload }    from '../auth/strategies/jwt.strategy';
 
 @ApiTags('admin')
 @ApiBearerAuth('access-token')
@@ -48,8 +49,8 @@ export class AdminController {
   approveUser(
     @Param('userId') userId: string,
     @Body('roles') roles: UserRole[],
-    @CurrentUser('sub') adminId: string,
+    @CurrentUser() admin: JwtPayload,
   ) {
-    return this.adminService.approveUser(userId, roles, adminId);
+    return this.adminService.approveUser(userId, roles, admin.sub);
   }
 }
