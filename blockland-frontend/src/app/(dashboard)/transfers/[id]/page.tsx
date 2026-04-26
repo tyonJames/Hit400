@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { transferService } from '@/lib/api/services';
+import { formatMoney, formatRange } from '@/lib/format';
 import { useAuthStore }    from '@/stores/auth.store';
 import { useBlockchainStore } from '@/stores/blockchain.store';
 import { StatusBadge, TxHashDisplay } from '@/components/shared/status-badge';
@@ -271,13 +272,13 @@ export default function TransferDetailPage() {
           {transfer.saleValue && (
             <div>
               <dt className="text-slate-500 text-xs uppercase tracking-wider mb-0.5">Sale Value</dt>
-              <dd className="font-semibold">${transfer.saleValue.toLocaleString()}</dd>
+              <dd className="font-semibold">{formatMoney(transfer.saleValue)}</dd>
             </div>
           )}
           {isMarketplace && (transfer.minPrice || transfer.maxPrice) && (
             <div>
               <dt className="text-slate-500 text-xs uppercase tracking-wider mb-0.5">Agreed Price Range</dt>
-              <dd>${transfer.minPrice?.toLocaleString()} – ${transfer.maxPrice?.toLocaleString()}</dd>
+              <dd>{formatRange(transfer.minPrice!, transfer.maxPrice!)}</dd>
             </div>
           )}
           {isMarketplace && transfer.paymentMethod && (

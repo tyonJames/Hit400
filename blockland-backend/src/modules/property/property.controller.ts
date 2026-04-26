@@ -1,9 +1,10 @@
 import {
   Controller, Get, Post, Patch, Param, Query, Body,
-  UseInterceptors, UploadedFiles,
+  UseInterceptors, UploadedFiles, Res, StreamableFile, Header,
 } from '@nestjs/common';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiBearerAuth, ApiConsumes } from '@nestjs/swagger';
+import { Response } from 'express';
 import { PropertyService }      from './property.service';
 import { RegisterPropertyDto }  from './dto/register-property.dto';
 import { DeclinePropertyDto }   from './dto/decline-property.dto';
@@ -102,5 +103,19 @@ export class PropertyController {
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.propertyService.findOne(id);
+  }
+
+  @Get(':id/documents/:docId/file')
+  async serveDocument(
+    @Param('id') propertyId: string,
+    @Param('docId') docId: string,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<StreamableFile> {
+    const { stream, contentType, fileName } = await this.propertyService.serveDocument(propertyId, docId);
+    res.set({
+      'Content-Type': contentType,
+      'Content-Disposition': `inline; filename="${encodeURIComponent(fileName)}"`,
+    });
+    return stream;
   }
 }

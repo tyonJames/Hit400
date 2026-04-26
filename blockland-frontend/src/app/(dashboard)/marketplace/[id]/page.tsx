@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { marketplaceService } from '@/lib/api/services';
+import { formatRange } from '@/lib/format';
 import { useAuthStore } from '@/stores/auth.store';
 import { ROUTES } from '@/lib/navigation';
 import type { MarketplaceListing, BuyerInterest } from '@/types';
@@ -119,7 +120,7 @@ export default function ListingDetailPage() {
               <div className="flex items-center gap-2">
                 <DollarSign className="w-5 h-5 text-emerald-600" />
                 <span className="text-2xl font-bold text-emerald-800">
-                  ${listing.minPrice.toLocaleString()} – ${listing.maxPrice.toLocaleString()}
+                  {formatRange(listing.minPrice, listing.maxPrice)}
                 </span>
               </div>
             </div>

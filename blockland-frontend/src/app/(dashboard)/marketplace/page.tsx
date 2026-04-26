@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { Search, MapPin, DollarSign, Tag } from 'lucide-react';
 import { marketplaceService } from '@/lib/api/services';
+import { formatRange } from '@/lib/format';
 import { useAuthStore } from '@/stores/auth.store';
 import { ROUTES } from '@/lib/navigation';
 import type { MarketplaceListing } from '@/types';
@@ -176,7 +177,7 @@ function ListingCard({ listing }: { listing: MarketplaceListing }) {
         <div className="bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-2">
           <p className="text-xs text-emerald-600 font-medium uppercase tracking-wide">Asking Price</p>
           <p className="text-emerald-800 font-semibold text-sm mt-0.5">
-            ${listing.minPrice.toLocaleString()} – ${listing.maxPrice.toLocaleString()}
+            {formatRange(listing.minPrice, listing.maxPrice)}
           </p>
         </div>
 

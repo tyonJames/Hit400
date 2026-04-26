@@ -1,5 +1,6 @@
 import {
   Injectable, NotFoundException, ConflictException, BadRequestException,
+  StreamableFile,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource, FindOptionsWhere, In, ILike } from 'typeorm';
@@ -244,6 +245,45 @@ export class PropertyService {
     });
 
     return this.propertyRepo.findOne({ where: { id } });
+  }
+
+  async serveDocument(propertyId: string, docId: string): Promise<{ stream: StreamableFile; contentType: string; fileName: string }> {
+    const doc = await this.docRepo.findOne({ where: { id: docId, propertyId } });
+    if (!doc) throw new NotFoundException('Document not found.');
+
+    const uploadDir = path.join(process.cwd(), 'uploads');
+    // Try the stored fileType extension, then common alternatives
+    const candidates = [
+      doc.fileType.toLowerCase(),
+      doc.fileType === 'JPG' ? 'jpeg' : null,
+    ].filter(Boolean) as string[];
+
+    // Also try scanning for the hash with any extension
+    let filePath: string | null = null;
+    for (const ext of candidates) {
+      const candidate = path.join(uploadDir, `${doc.fileHash}.${ext}`);
+      if (fs.existsSync(candidate)) { filePath = candidate; break; }
+    }
+
+    if (!filePath) {
+      // Fallback: glob for any file with this hash prefix
+      const entries = fs.readdirSync(uploadDir).filter(f => f.startsWith(doc.fileHash));
+      if (entries.length > 0) filePath = path.join(uploadDir, entries[0]);
+    }
+
+    if (!filePath) throw new NotFoundException('File not found on disk.');
+
+    const contentTypeMap: Record<string, string> = {
+      pdf:  'application/pdf',
+      jpg:  'image/jpeg',
+      jpeg: 'image/jpeg',
+      png:  'image/png',
+    };
+    const ext = path.extname(filePath).slice(1).toLowerCase();
+    const contentType = contentTypeMap[ext] ?? 'application/octet-stream';
+
+    const stream = fs.createReadStream(filePath);
+    return { stream: new StreamableFile(stream), contentType, fileName: doc.fileName };
   }
 
   async findAll(params: {

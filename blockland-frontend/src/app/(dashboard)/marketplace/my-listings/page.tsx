@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Plus, MapPin, Edit2, Trash2, DollarSign } from 'lucide-react';
 import { toast } from 'sonner';
 import { marketplaceService } from '@/lib/api/services';
+import { formatRange } from '@/lib/format';
 import { ROUTES } from '@/lib/navigation';
 import type { MarketplaceListing } from '@/types';
 
@@ -155,7 +156,7 @@ export default function MyListingsPage() {
                       </p>
                     )}
                     <p className="text-sm font-semibold text-emerald-700">
-                      ${listing.minPrice.toLocaleString()} – ${listing.maxPrice.toLocaleString()}
+                      {formatRange(listing.minPrice, listing.maxPrice)}
                     </p>
                     <div className="flex flex-wrap gap-1">
                       {listing.paymentMethods.map((m) => (
