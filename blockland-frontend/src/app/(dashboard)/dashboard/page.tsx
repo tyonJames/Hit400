@@ -2,11 +2,12 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { MapPin, ArrowLeftRight, AlertTriangle, Activity, ClipboardList, Users, ShieldCheck } from 'lucide-react';
-import { dashboardService } from '@/lib/api/services';
+import { MapPin, ArrowLeftRight, AlertTriangle, Activity, ClipboardList, Users, ShieldCheck, Clock } from 'lucide-react';
+import { dashboardService, transferService } from '@/lib/api/services';
 import { useAuthStore }     from '@/stores/auth.store';
+import { StatusBadge }      from '@/components/shared/status-badge';
 import { ROUTES }           from '@/lib/navigation';
-import type { DashboardSummary } from '@/types';
+import type { DashboardSummary, Transfer } from '@/types';
 
 export default function DashboardPage() {
   const user        = useAuthStore((s) => s.user);
@@ -14,8 +15,9 @@ export default function DashboardPage() {
   const isRegistrar = useAuthStore((s) => s.isRegistrar());
   const isUser      = useAuthStore((s) => s.isUser());
 
-  const [summary, setSummary] = useState<DashboardSummary | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [summary, setSummary]         = useState<DashboardSummary | null>(null);
+  const [myTransfers, setMyTransfers] = useState<Transfer[]>([]);
+  const [loading, setLoading]         = useState(true);
 
   useEffect(() => {
     dashboardService.getSummary()
@@ -23,6 +25,18 @@ export default function DashboardPage() {
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    if (!isUser) return;
+    transferService.getMine({ limit: 20 })
+      .then((res: any) => {
+        const rows: Transfer[] = Array.isArray(res) ? res : (res?.data ?? []);
+        const ACTIVE = ['PENDING_BUYER','PENDING_REGISTRAR','PENDING_REGISTRAR_TERMS',
+                        'AWAITING_POP','PENDING_SELLER_CONFIRMATION','PENDING_REGISTRAR_FINAL'];
+        setMyTransfers(rows.filter((t) => ACTIVE.includes(t.status)));
+      })
+      .catch(() => {});
+  }, [isUser]);
 
   if (loading) {
     return (
@@ -132,6 +146,56 @@ export default function DashboardPage() {
           );
         })}
       </div>
+
+      {/* Active transfers for regular user */}
+      {isUser && !isRegistrar && !isAdmin && myTransfers.length > 0 && (
+        <div className="space-y-2">
+          <h3 className="text-sm font-semibold text-slate-600 uppercase tracking-wider flex items-center gap-2">
+            <Clock className="w-4 h-4 text-amber-500" />
+            Transfers requiring attention
+          </h3>
+          <div className="card p-0 overflow-hidden divide-y divide-slate-50">
+            {myTransfers.map((t) => {
+              const isBuyer  = t.buyerId  === user?.id;
+              const isSeller = t.sellerId === user?.id;
+              let action: string | null = null;
+              if (t.status === 'PENDING_BUYER' && isBuyer)                       action = 'Your approval needed';
+              if (t.status === 'AWAITING_POP' && isBuyer)                        action = 'Upload proof of payment';
+              if (t.status === 'PENDING_SELLER_CONFIRMATION' && isSeller)         action = 'Confirm payment received';
+              return (
+                <Link
+                  key={t.id}
+                  href={ROUTES.TRANSFER(t.id)}
+                  className="flex items-center gap-4 px-5 py-4 hover:bg-slate-50 transition-colors"
+                >
+                  <div className="flex-1 min-w-0">
+                    <p className="font-mono text-xs font-semibold text-slate-700">
+                      {t.property?.plotNumber ?? t.propertyId.slice(0, 8)}
+                    </p>
+                    <p className="text-sm text-slate-500 truncate mt-0.5">
+                      {t.property?.address ?? '—'}
+                    </p>
+                    <p className="text-xs text-slate-400">
+                      {isBuyer ? `Seller: ${t.seller?.fullName ?? '—'}` : `Buyer: ${t.buyer?.fullName ?? '—'}`}
+                    </p>
+                  </div>
+                  <div className="flex flex-col items-end gap-1 shrink-0">
+                    <StatusBadge status={t.status} size="sm" />
+                    {action && (
+                      <span className="text-xs text-amber-600 font-medium bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
+                        {action}
+                      </span>
+                    )}
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+          <Link href={ROUTES.TRANSFERS} className="text-xs text-primary hover:underline block text-right">
+            View all transfers →
+          </Link>
+        </div>
+      )}
 
       {/* Quick actions for registrar/admin */}
       {(isAdmin || isRegistrar) && (

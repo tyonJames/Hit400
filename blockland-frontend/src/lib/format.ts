@@ -1,7 +1,7 @@
 /** Formats a number as Zimbabwe-style currency: $20 000.00 */
 export function formatMoney(amount: number | null | undefined, symbol = '$'): string {
   if (amount == null) return '—';
-  const [integer, decimal] = amount.toFixed(2).split('.');
+  const [integer, decimal] = Number(amount).toFixed(2).split('.');
   const grouped = integer.replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
   return `${symbol}${grouped}.${decimal}`;
 }
