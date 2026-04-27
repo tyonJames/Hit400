@@ -8,8 +8,10 @@ import { MarketplaceListing } from '../../database/entities/marketplace-listing.
 import { BuyerInterest }      from '../../database/entities/buyer-interest.entity';
 import { Property }           from '../../database/entities/property.entity';
 import { Transfer }           from '../../database/entities/transfer.entity';
+import { User }               from '../../database/entities/user.entity';
 import { OwnershipRecord }    from '../../database/entities/ownership-record.entity';
 import { ActivityLogService } from '../activity-log/activity-log.service';
+import { MessagesService }    from '../messages/messages.service';
 import {
   ListingStatus, InterestStatus, PropertyStatus, TransferStatus,
 } from '../../database/enums';
@@ -24,8 +26,10 @@ export class MarketplaceService {
     @InjectRepository(BuyerInterest)      private interestRepo: Repository<BuyerInterest>,
     @InjectRepository(Property)           private propertyRepo: Repository<Property>,
     @InjectRepository(Transfer)           private transferRepo: Repository<Transfer>,
+    @InjectRepository(User)               private userRepo: Repository<User>,
     private dataSource:         DataSource,
     private activityLogService: ActivityLogService,
+    private messagesService:    MessagesService,
   ) {}
 
   // ── Listings ─────────────────────────────────────────────────────────────
@@ -138,7 +142,10 @@ export class MarketplaceService {
   // ── Interests ─────────────────────────────────────────────────────────────
 
   async expressInterest(listingId: string, dto: ExpressInterestDto, user: JwtPayload) {
-    const listing = await this.listingRepo.findOne({ where: { id: listingId, status: ListingStatus.ACTIVE } });
+    const listing = await this.listingRepo.findOne({
+      where:     { id: listingId, status: ListingStatus.ACTIVE },
+      relations: ['property'],
+    });
     if (!listing) throw new NotFoundException('Active listing not found.');
     if (listing.sellerId === user.sub) throw new ForbiddenException('Cannot express interest in your own listing.');
 
@@ -164,6 +171,21 @@ export class MarketplaceService {
       userId: user.sub, action: 'INTEREST_EXPRESSED',
       entityType: 'MarketplaceListing', entityId: listingId,
     });
+
+    const buyer = await this.userRepo.findOne({ where: { id: user.sub } });
+    const plot  = listing.property?.plotNumber ?? 'your listed property';
+    const addr  = listing.property?.address ?? '';
+    this.messagesService.notify({
+      senderId:     user.sub,
+      recipientIds: [listing.sellerId],
+      subject:      `New interest in your listing — ${plot}`,
+      body:         `Hi,\n\n` +
+                    `${buyer?.fullName ?? 'A buyer'} has expressed interest in your property ` +
+                    `${plot}${addr ? ` at ${addr}` : ''}` +
+                    `${dto.message ? `\n\nTheir message: "${dto.message}"` : ''}.\n\n` +
+                    `Log in to the marketplace to review all interested buyers and select one to proceed.`,
+    }).catch(() => {});
+
     return interest;
   }
 
@@ -248,6 +270,46 @@ export class MarketplaceService {
       entityType: 'Transfer', entityId: transfer.id,
       metadata: { via: 'marketplace', listingId },
     });
+
+    const plot   = listing.property?.plotNumber ?? 'property';
+    const addr   = listing.property?.address ?? '';
+    const method = paymentMethod ?? 'the agreed method';
+    const instrBlock = paymentInstructions
+      ? `\n\nPayment instructions from the seller:\n${paymentInstructions}`
+      : '';
+
+    const [buyer, staffIds] = await Promise.all([
+      this.userRepo.findOne({ where: { id: interest.buyerId } }),
+      this.messagesService.getStaffIds(),
+    ]);
+    const seller = await this.userRepo.findOne({ where: { id: user.sub } });
+
+    this.messagesService.notify({
+      senderId:     user.sub,
+      recipientIds: [interest.buyerId],
+      transferId:   transfer.id,
+      subject:      `You have been selected — ${plot}`,
+      body:         `Hi ${buyer?.fullName ?? 'there'},\n\n` +
+                    `${seller?.fullName ?? 'The seller'} has selected you to purchase ${plot}` +
+                    `${addr ? ` at ${addr}` : ''}.\n\n` +
+                    `Payment method: ${method}` +
+                    instrBlock +
+                    `\n\nPlease log in to My Transfers to proceed. The registrar will review the terms first, ` +
+                    `after which you will be prompted to upload your proof of payment.`,
+    }).catch(() => {});
+
+    this.messagesService.notify({
+      senderId:     user.sub,
+      recipientIds: staffIds,
+      transferId:   transfer.id,
+      subject:      `New marketplace transfer pending review — ${plot}`,
+      body:         `A new marketplace transfer has been created for ${plot}${addr ? ` (${addr})` : ''}.\n\n` +
+                    `Seller: ${seller?.fullName ?? '—'}\n` +
+                    `Buyer: ${buyer?.fullName ?? '—'}\n` +
+                    `Payment method: ${method}\n\n` +
+                    `Please log in to review and approve the transfer terms.`,
+    }).catch(() => {});
+
     return transfer;
   }
 }

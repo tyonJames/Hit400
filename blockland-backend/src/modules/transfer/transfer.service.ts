@@ -15,6 +15,7 @@ import { OwnershipRecord }  from '../../database/entities/ownership-record.entit
 import { MarketplaceListing } from '../../database/entities/marketplace-listing.entity';
 import { BlockchainService }  from '../blockchain/blockchain.service';
 import { ActivityLogService } from '../activity-log/activity-log.service';
+import { MessagesService }    from '../messages/messages.service';
 import {
   TransferStatus, PropertyStatus, ApproverRole, ApprovalAction,
   AcquisitionType, UserRole, ListingStatus,
@@ -41,6 +42,7 @@ export class TransferService {
     @InjectRepository(MarketplaceListing) private listingRepo: Repository<MarketplaceListing>,
     private blockchainService: BlockchainService,
     private activityLogService: ActivityLogService,
+    private messagesService:   MessagesService,
     private configService: ConfigService,
     private dataSource: DataSource,
   ) {}
@@ -74,7 +76,21 @@ export class TransferService {
       userId: user.sub, action: 'TRANSFER_INITIATED',
       entityType: 'Transfer', entityId: transfer.id,
     });
-    return transfer;
+
+    const full = await this.findOne(transfer.id);
+    const plot = full.property?.plotNumber ?? 'property';
+    this.messagesService.notify({
+      senderId:    user.sub,
+      recipientIds: [dto.buyerId],
+      transferId:  full.id,
+      subject:     `Transfer initiated — ${plot}`,
+      body:        `Hi ${full.buyer?.fullName ?? 'there'},\n\n` +
+                   `${full.seller?.fullName ?? 'The seller'} has initiated a property transfer to you for ` +
+                   `${plot}${full.property?.address ? ` (${full.property.address})` : ''}.\n\n` +
+                   `Please log in and go to My Transfers to review and approve.`,
+    }).catch(() => {});
+
+    return full;
   }
 
   // ── Queries ───────────────────────────────────────────────────────────────
@@ -136,7 +152,22 @@ export class TransferService {
       userId: user.sub, action: 'TRANSFER_BUYER_APPROVED',
       entityType: 'Transfer', entityId: id,
     });
-    return this.findOne(id);
+
+    const updated = await this.findOne(id);
+    const plot = updated.property?.plotNumber ?? 'property';
+    this.messagesService.getStaffIds().then((staffIds) =>
+      this.messagesService.notify({
+        senderId:     user.sub,
+        recipientIds: staffIds,
+        transferId:   id,
+        subject:      `Transfer ready for sign-off — ${plot}`,
+        body:         `${updated.buyer?.fullName ?? 'The buyer'} has approved the transfer of ${plot}` +
+                      `${updated.property?.address ? ` (${updated.property.address})` : ''}.\n\n` +
+                      `Please log in to finalise the transfer on the blockchain.`,
+      })
+    ).catch(() => {});
+
+    return updated;
   }
 
   async registrarApprove(id: string, user: JwtPayload, notes?: string) {
@@ -165,16 +196,32 @@ export class TransferService {
         userId: user.sub, action: 'TRANSFER_TERMS_APPROVED',
         entityType: 'Transfer', entityId: id,
       });
+
+      const updated = await this.findOne(id);
+      const plot    = updated.property?.plotNumber ?? 'property';
+      const method  = updated.paymentMethod ?? 'the agreed method';
+      const instrBlock = updated.paymentInstructions
+        ? `\n\nPayment instructions from the seller:\n${updated.paymentInstructions}`
+        : '';
+      this.messagesService.notify({
+        senderId:     user.sub,
+        recipientIds: [updated.buyerId],
+        transferId:   id,
+        subject:      `Terms approved — please make payment — ${plot}`,
+        body:         `Hi ${updated.buyer?.fullName ?? 'there'},\n\n` +
+                      `The registrar has approved the transfer terms for ${plot}. ` +
+                      `Please make your payment via ${method} and then upload your proof of payment.` +
+                      instrBlock +
+                      `\n\nLog in to My Transfers to upload your payment proof.`,
+      }).catch(() => {});
     } else {
       await this.dataSource.transaction(async (em) => {
         transfer.status        = TransferStatus.REJECTED;
         transfer.rejectionNote = note;
         transfer.cancelledAt   = new Date();
         await em.save(transfer);
-        // Restore property
         transfer.property.status = PropertyStatus.ACTIVE;
         await em.save(transfer.property);
-        // Restore listing if exists
         if (transfer.marketplaceListingId) {
           await em.update(MarketplaceListing,
             { id: transfer.marketplaceListingId },
@@ -186,6 +233,18 @@ export class TransferService {
         userId: user.sub, action: 'TRANSFER_TERMS_REJECTED',
         entityType: 'Transfer', entityId: id, metadata: { note },
       });
+
+      const updated = await this.findOne(id);
+      const plot    = updated.property?.plotNumber ?? 'property';
+      this.messagesService.notify({
+        senderId:     user.sub,
+        recipientIds: [updated.buyerId, updated.sellerId],
+        transferId:   id,
+        subject:      `Transfer terms rejected — ${plot}`,
+        body:         `The registrar has rejected the transfer terms for ${plot}.\n\n` +
+                      `Reason: ${note}\n\n` +
+                      `The listing has been restored to the marketplace. The seller may review and re-list.`,
+      }).catch(() => {});
     }
     return this.findOne(id);
   }
@@ -215,7 +274,22 @@ export class TransferService {
       userId: user.sub, action: 'TRANSFER_POP_UPLOADED',
       entityType: 'Transfer', entityId: id,
     });
-    return this.findOne(id);
+
+    const updated = await this.findOne(id);
+    const plot    = updated.property?.plotNumber ?? 'property';
+    this.messagesService.getStaffIds().then((staffIds) =>
+      this.messagesService.notify({
+        senderId:     user.sub,
+        recipientIds: [updated.sellerId, ...staffIds],
+        transferId:   id,
+        subject:      `Proof of payment uploaded — ${plot}`,
+        body:         `${updated.buyer?.fullName ?? 'The buyer'} has uploaded proof of payment for the transfer of ` +
+                      `${plot}${updated.property?.address ? ` (${updated.property.address})` : ''}.\n\n` +
+                      `Please log in to My Transfers to review the document and confirm payment received.`,
+      })
+    ).catch(() => {});
+
+    return updated;
   }
 
   async servePop(id: string) {
@@ -242,18 +316,47 @@ export class TransferService {
         userId: user.sub, action: 'TRANSFER_PAYMENT_CONFIRMED',
         entityType: 'Transfer', entityId: id,
       });
+
+      const updated = await this.findOne(id);
+      const plot    = updated.property?.plotNumber ?? 'property';
+      this.messagesService.getStaffIds().then((staffIds) =>
+        this.messagesService.notify({
+          senderId:     user.sub,
+          recipientIds: staffIds,
+          transferId:   id,
+          subject:      `Payment confirmed — ready for final sign-off — ${plot}`,
+          body:         `${updated.seller?.fullName ?? 'The seller'} has confirmed payment received for ` +
+                        `${plot}${updated.property?.address ? ` (${updated.property.address})` : ''}.\n\n` +
+                        `Please log in to complete the transfer and record ownership on the blockchain.`,
+        })
+      ).catch(() => {});
+
+      return updated;
     } else {
       if (!note?.trim()) throw new BadRequestException('A dispute note is required.');
-      // Send back for buyer to re-upload POP
-      transfer.status       = TransferStatus.AWAITING_POP;
+      transfer.status        = TransferStatus.AWAITING_POP;
       transfer.rejectionNote = note;
       await this.transferRepo.save(transfer);
       await this.activityLogService.log({
         userId: user.sub, action: 'TRANSFER_PAYMENT_DISPUTED',
         entityType: 'Transfer', entityId: id, metadata: { note },
       });
+
+      const updated = await this.findOne(id);
+      const plot    = updated.property?.plotNumber ?? 'property';
+      this.messagesService.notify({
+        senderId:     user.sub,
+        recipientIds: [updated.buyerId],
+        transferId:   id,
+        subject:      `Payment disputed — please re-upload proof — ${plot}`,
+        body:         `Hi ${updated.buyer?.fullName ?? 'there'},\n\n` +
+                      `${updated.seller?.fullName ?? 'The seller'} has disputed your proof of payment for ${plot}.\n\n` +
+                      `Reason: ${note}\n\n` +
+                      `Please review the issue, make the correct payment, and re-upload your proof of payment.`,
+      }).catch(() => {});
+
+      return updated;
     }
-    return this.findOne(id);
   }
 
   async registrarComplete(id: string, user: JwtPayload, notes?: string) {
@@ -317,7 +420,21 @@ export class TransferService {
       userId: user.sub, action: 'TRANSFER_CANCELLED',
       entityType: 'Transfer', entityId: id, metadata: { note },
     });
-    return this.findOne(id);
+
+    const updated = await this.findOne(id);
+    const plot    = updated.property?.plotNumber ?? 'property';
+    this.messagesService.getStaffIds().then((staffIds) =>
+      this.messagesService.notify({
+        senderId:     user.sub,
+        recipientIds: [updated.sellerId, updated.buyerId, ...staffIds],
+        transferId:   id,
+        subject:      `Transfer cancelled — ${plot}`,
+        body:         `The transfer of ${plot}${updated.property?.address ? ` (${updated.property.address})` : ''} has been cancelled.\n\n` +
+                      `Reason: ${note}`,
+      })
+    ).catch(() => {});
+
+    return updated;
   }
 
   // ── Shared on-chain finalisation ──────────────────────────────────────────
@@ -366,6 +483,20 @@ export class TransferService {
       userId: user.sub, action: 'TRANSFER_CONFIRMED',
       entityType: 'Transfer', entityId: id, metadata: { txid },
     });
-    return { transfer: await this.findOne(id), blockchainTxHash: txid };
+
+    const finalTransfer = await this.findOne(id);
+    const plot = finalTransfer.property?.plotNumber ?? 'property';
+    this.messagesService.notify({
+      senderId:     user.sub,
+      recipientIds: [finalTransfer.buyerId, finalTransfer.sellerId],
+      transferId:   id,
+      subject:      `Transfer complete — ownership confirmed — ${plot}`,
+      body:         `The transfer of ${plot}${finalTransfer.property?.address ? ` (${finalTransfer.property.address})` : ''} ` +
+                    `has been completed and ownership has been recorded on the blockchain.\n\n` +
+                    `New owner: ${finalTransfer.buyer?.fullName ?? 'Buyer'}\n` +
+                    `Blockchain TX: ${txid}`,
+    }).catch(() => {});
+
+    return { transfer: finalTransfer, blockchainTxHash: txid };
   }
 }

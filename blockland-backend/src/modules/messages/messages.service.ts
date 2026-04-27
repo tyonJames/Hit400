@@ -161,6 +161,45 @@ export class MessagesService {
     });
   }
 
+  async getStaffIds(): Promise<string[]> {
+    const staff = await this.userRepo
+      .createQueryBuilder('u')
+      .innerJoin('u.userRoles', 'ur')
+      .innerJoin('ur.role', 'r')
+      .where('r.name IN (:...roles)', { roles: ['REGISTRAR', 'ADMIN'] })
+      .getMany();
+    return staff.map((u) => u.id);
+  }
+
+  async notify(params: {
+    senderId:     string;
+    recipientIds: string[];
+    subject:      string;
+    body:         string;
+    transferId?:  string;
+  }): Promise<void> {
+    const uniq = [...new Set(params.recipientIds.filter((id) => id !== params.senderId))];
+    if (uniq.length === 0) return;
+
+    const msg = await this.messageRepo.save(
+      this.messageRepo.create({
+        senderId:           params.senderId,
+        transferId:         params.transferId ?? null,
+        subject:            params.subject,
+        body:               params.body,
+        attachmentFileName: null,
+        attachmentFilePath: null,
+        attachmentFileSize: null,
+      }),
+    );
+
+    for (const recipientId of uniq) {
+      await this.recipientRepo.save(
+        this.recipientRepo.create({ messageId: msg.id, recipientId, readAt: null }),
+      );
+    }
+  }
+
   async serveAttachment(messageId: string, userId: string) {
     const message = await this.messageRepo.findOne({ where: { id: messageId } });
     if (!message) throw new NotFoundException('Message not found.');
