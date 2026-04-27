@@ -9,6 +9,7 @@ import { Property }         from '../../database/entities/property.entity';
 import { DisputeResolution } from '../../database/entities/dispute-resolution.entity';
 import { BlockchainService } from '../blockchain/blockchain.service';
 import { ActivityLogService } from '../activity-log/activity-log.service';
+import { TransferService }   from '../transfer/transfer.service';
 import { DisputeStatus, PropertyStatus, UserRole } from '../../database/enums';
 import { CreateDisputeDto }  from './dto/create-dispute.dto';
 import { JwtPayload }        from '../auth/strategies/jwt.strategy';
@@ -21,8 +22,9 @@ export class DisputeService {
     @InjectRepository(DisputeResolution) private resolutionRepo: Repository<DisputeResolution>,
     private blockchainService: BlockchainService,
     private activityLogService: ActivityLogService,
-    private configService: ConfigService,
-    private dataSource: DataSource,
+    private transferService:    TransferService,
+    private configService:      ConfigService,
+    private dataSource:         DataSource,
   ) {}
 
   async create(dto: CreateDisputeDto, user: JwtPayload) {
@@ -51,6 +53,9 @@ export class DisputeService {
       });
       return em.save(d);
     });
+
+    // Freeze any active transfer on this property
+    await this.transferService.freezeForDispute(dto.propertyId, dto.description).catch(() => {});
 
     await this.activityLogService.log({
       userId: user.sub, action: 'DISPUTE_CREATED',
@@ -113,8 +118,8 @@ export class DisputeService {
     });
 
     await this.dataSource.transaction(async (em) => {
-      dispute.status      = DisputeStatus.RESOLVED;
-      dispute.resolvedAt  = new Date();
+      dispute.status          = DisputeStatus.RESOLVED;
+      dispute.resolvedAt      = new Date();
       dispute.property.status = PropertyStatus.ACTIVE;
       await em.save(dispute);
       await em.save(dispute.property);
@@ -126,6 +131,9 @@ export class DisputeService {
         blockchainTxHash: txid,
       }));
     });
+
+    // Unfreeze any frozen transfer on this property
+    await this.transferService.unfreezeAfterDispute(dispute.propertyId).catch(() => {});
 
     await this.activityLogService.log({
       userId: user.sub, action: 'DISPUTE_RESOLVED',

@@ -37,6 +37,11 @@ export const userService = {
   changePassword: (currentPassword: string, newPassword: string) =>
     api.patch<{ message: string }>('/users/me/password', { currentPassword, newPassword }),
 
+  searchByBlocklandId: (blocklandId: string) =>
+    api.get<{ id: string; fullName: string; blocklandId: string; roles: string[] } | null>(
+      '/users/search', { blocklandId }
+    ),
+
   list: (params?: { page?: number; limit?: number }) =>
     api.get<PaginatedResponse<AuthUser>>('/users', params),
 
@@ -102,8 +107,12 @@ export const propertyService = {
 };
 
 export const transferService = {
-  initiate: (data: { propertyId: string; buyerId: string; saleValue?: number; notes?: string }) =>
-    api.post<Transfer>('/transfers', data),
+  initiate: (data: {
+    propertyId: string; buyerId: string; saleValue?: number;
+    paymentMethod?: string; paymentInstructions?: string;
+    marketplaceListingId?: string; minPrice?: number; maxPrice?: number;
+    notes?: string;
+  }) => api.post<Transfer>('/transfers', data),
 
   list: (params?: { page?: number; limit?: number; status?: string }) =>
     api.get<PaginatedResponse<Transfer>>('/transfers', params),
@@ -113,23 +122,12 @@ export const transferService = {
 
   getById: (id: string) => api.get<Transfer>(`/transfers/${id}`),
 
-  getByProperty: (propertyId: string) =>
-    api.get<Transfer[]>(`/transfers/property/${propertyId}/history`),
-
-  buyerApprove: (id: string, notes?: string) =>
-    api.patch<Transfer>(`/transfers/${id}/buyer-approve`, { notes }),
-
-  registrarApprove: (id: string, notes?: string) =>
-    api.patch<{ transfer: Transfer; blockchainTxHash: string }>(
-      `/transfers/${id}/registrar-approve`, { notes }
-    ),
+  /** Step 1: registrar approves or rejects the transfer application */
+  registrarReview: (id: string, action: 'APPROVE' | 'REJECT', note: string) =>
+    api.patch<Transfer>(`/transfers/${id}/registrar-review`, { action, note }),
 
   cancel: (id: string, note: string) =>
     api.patch<Transfer>(`/transfers/${id}/cancel`, { note }),
-
-  // Marketplace flow
-  reviewTerms: (id: string, action: 'APPROVE' | 'REJECT', note: string) =>
-    api.patch<Transfer>(`/transfers/${id}/review-terms`, { action, note }),
 
   uploadPop: (id: string, file: File) => {
     const form = new FormData();
@@ -148,6 +146,11 @@ export const transferService = {
   getPopUrl: (id: string) => {
     const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api/v1';
     return `${BASE_URL}/transfers/${id}/pop`;
+  },
+
+  getCertificateUrl: (id: string) => {
+    const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api/v1';
+    return `${BASE_URL}/transfers/${id}/certificate`;
   },
 };
 

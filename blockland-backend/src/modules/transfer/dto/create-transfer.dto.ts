@@ -19,5 +19,32 @@ export class CreateTransferDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
+  paymentMethod?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  paymentInstructions?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  marketplaceListingId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  minPrice?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  maxPrice?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
   notes?: string;
 }

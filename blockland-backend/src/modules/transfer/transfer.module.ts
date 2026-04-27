@@ -6,9 +6,10 @@ import { User }               from '../../database/entities/user.entity';
 import { TransferApproval }   from '../../database/entities/transfer-approval.entity';
 import { OwnershipRecord }    from '../../database/entities/ownership-record.entity';
 import { MarketplaceListing } from '../../database/entities/marketplace-listing.entity';
-import { MessagesModule }     from '../messages/messages.module';
-import { TransferService }    from './transfer.service';
-import { TransferController } from './transfer.controller';
+import { MessagesModule }        from '../messages/messages.module';
+import { TransferService }       from './transfer.service';
+import { TransferController }    from './transfer.controller';
+import { TransferExpiryService } from './transfer-expiry.service';
 
 @Module({
   imports: [
@@ -16,7 +17,7 @@ import { TransferController } from './transfer.controller';
     MessagesModule,
   ],
   controllers: [TransferController],
-  providers:   [TransferService],
+  providers:   [TransferService, TransferExpiryService],
   exports:     [TransferService],
 })
 export class TransferModule {}

@@ -49,6 +49,7 @@ export class AuthService {
         phone:         dto.phone,
         passwordHash,
         walletAddress: dto.walletAddress || null,
+        blocklandId:   await this.generateBlocklandId(),
         isActive:      true,
         isApproved:    false,
         approvedAt:    null,
@@ -134,6 +135,17 @@ export class AuthService {
   // ---------------------------------------------------------------------------
   // HELPERS
   // ---------------------------------------------------------------------------
+  private async generateBlocklandId(): Promise<string> {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no ambiguous 0/O/1/I
+    for (let attempt = 0; attempt < 10; attempt++) {
+      let id = 'BL-';
+      for (let i = 0; i < 6; i++) id += chars[Math.floor(Math.random() * chars.length)];
+      const exists = await this.userRepo.findOne({ where: { blocklandId: id } });
+      if (!exists) return id;
+    }
+    throw new Error('Could not generate unique Blockland ID.');
+  }
+
   private async generateTokens(user: User, ipAddress?: string) {
     const roles = user.userRoles?.map((ur) => ur.role?.name) ?? [];
 
@@ -165,6 +177,7 @@ export class AuthService {
         fullName:      user.fullName,
         roles,
         walletAddress: user.walletAddress,
+        blocklandId:   user.blocklandId,
       },
     };
   }

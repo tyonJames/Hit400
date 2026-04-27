@@ -1,5 +1,6 @@
 import { Module }               from '@nestjs/common';
 import { ConfigModule }         from '@nestjs/config';
+import { ScheduleModule }       from '@nestjs/schedule';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD }            from '@nestjs/core';
 import { DatabaseModule }       from './database/database.module';
@@ -16,12 +17,14 @@ import { DashboardModule }      from './modules/dashboard/dashboard.module';
 import { OwnershipModule }      from './modules/ownership/ownership.module';
 import { MarketplaceModule }    from './modules/marketplace/marketplace.module';
 import { MessagesModule }       from './modules/messages/messages.module';
+import { UsersModule }          from './modules/users/users.module';
 import { JwtAuthGuard }         from './common/guards/jwt-auth.guard';
 import { RolesGuard }           from './common/guards/roles.guard';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true, envFilePath: ['.env.local', '.env'] }),
+    ScheduleModule.forRoot(),
     ThrottlerModule.forRoot([{ name: 'default', ttl: 60_000, limit: 100 }]),
     DatabaseModule,
     BlockchainModule,
@@ -37,6 +40,7 @@ import { RolesGuard }           from './common/guards/roles.guard';
     OwnershipModule,
     MarketplaceModule,
     MessagesModule,
+    UsersModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },

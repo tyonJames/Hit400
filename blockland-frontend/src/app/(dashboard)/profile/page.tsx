@@ -88,20 +88,22 @@ export default function ProfilePage() {
         <div className="text-sm text-slate-500 space-y-1.5">
           <p><span className="font-medium text-slate-700">Email:</span> {user?.email}</p>
           <p><span className="font-medium text-slate-700">Roles:</span> {user?.roles.join(', ')}</p>
-          <div className="flex items-center gap-2 pt-1">
-            <span className="font-medium text-slate-700">Your ID:</span>
-            <span className="font-mono text-xs text-slate-600 truncate max-w-xs">{user?.id}</span>
-            <button
-              onClick={copyUserId}
-              className="ml-auto flex items-center gap-1 text-xs text-primary hover:text-primary/80 transition-colors flex-shrink-0"
-            >
-              {copiedId
-                ? <><CheckCircle className="w-3.5 h-3.5 text-emerald-500" /> Copied</>
-                : <><Copy className="w-3.5 h-3.5" /> Copy</>
-              }
-            </button>
-          </div>
-          <p className="text-xs text-slate-400">Share your ID with a seller to be added as a buyer in a transfer.</p>
+          {user?.blocklandId && (
+            <div className="flex items-center gap-2 pt-1 pb-1">
+              <span className="font-medium text-slate-700">Blockland ID:</span>
+              <span className="font-mono text-base font-bold text-primary tracking-wider">{user.blocklandId}</span>
+              <button
+                onClick={() => navigator.clipboard.writeText(user!.blocklandId!).then(() => { setCopiedId(true); setTimeout(() => setCopiedId(false), 2000); })}
+                className="ml-auto flex items-center gap-1 text-xs text-primary hover:text-primary/80 transition-colors flex-shrink-0"
+              >
+                {copiedId
+                  ? <><CheckCircle className="w-3.5 h-3.5 text-emerald-500" /> Copied</>
+                  : <><Copy className="w-3.5 h-3.5" /> Copy</>
+                }
+              </button>
+            </div>
+          )}
+          <p className="text-xs text-slate-400">Share your Blockland ID with a seller when they initiate a transfer to you.</p>
         </div>
         <form onSubmit={profileForm.handleSubmit(onUpdateProfile)} className="space-y-3 pt-2 border-t border-slate-100">
           <div>

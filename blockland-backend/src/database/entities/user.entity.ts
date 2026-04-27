@@ -40,6 +40,9 @@ export class User extends BaseEntity {
   @Column({ name: 'wallet_address', type: 'varchar', length: 50, nullable: true })
   walletAddress: string | null;
 
+  @Column({ name: 'blockland_id', type: 'varchar', length: 12, unique: true, nullable: true })
+  blocklandId: string | null;
+
   @Column({ name: 'is_active', type: 'boolean', default: true })
   isActive: boolean;
 

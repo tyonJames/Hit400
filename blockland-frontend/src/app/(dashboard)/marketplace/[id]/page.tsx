@@ -77,7 +77,7 @@ export default function ListingDetailPage() {
     setSelectingId(selectModal.interestId);
     try {
       const transfer = await marketplaceService.selectBuyer(id, selectModal.interestId, paymentMethod, paymentInstructions.trim());
-      toast.success('Buyer selected! Transfer initiated — awaiting registrar review of terms.');
+      toast.success('Buyer selected! Transfer submitted — awaiting registrar review.');
       router.push(ROUTES.TRANSFER(transfer.id));
     } catch (err: any) { toast.error(err?.message); } finally { setSelectingId(null); setSelectModal(null); setPaymentInstructions(''); }
   }

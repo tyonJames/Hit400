@@ -19,7 +19,7 @@ import { JwtPayload }        from '../auth/strategies/jwt.strategy';
 export class TransferController {
   constructor(private readonly transferService: TransferService) {}
 
-  // ── Direct flow ───────────────────────────────────────────────────────────
+  // ── Initiate ──────────────────────────────────────────────────────────────
 
   @Post()
   @Roles(UserRole.USER)
@@ -27,37 +27,20 @@ export class TransferController {
     return this.transferService.initiate(dto, user);
   }
 
-  @Patch(':id/buyer-approve')
-  buyerApprove(
-    @Param('id') id: string,
-    @CurrentUser() user: JwtPayload,
-    @Body('notes') notes?: string,
-  ) {
-    return this.transferService.buyerApprove(id, user, notes);
-  }
+  // ── Step 1: Registrar reviews (approve → AWAITING_PAYMENT, reject) ────────
 
-  @Patch(':id/registrar-approve')
+  @Patch(':id/registrar-review')
   @Roles(UserRole.REGISTRAR, UserRole.ADMIN)
-  registrarApprove(
-    @Param('id') id: string,
-    @CurrentUser() user: JwtPayload,
-    @Body('notes') notes?: string,
+  registrarReview(
+    @Param('id')      id:     string,
+    @Body('action')   action: 'APPROVE' | 'REJECT',
+    @Body('note')     note:   string,
+    @CurrentUser()    user:   JwtPayload,
   ) {
-    return this.transferService.registrarApprove(id, user, notes);
+    return this.transferService.registrarReview(id, action, note, user);
   }
 
-  // ── Marketplace flow ──────────────────────────────────────────────────────
-
-  @Patch(':id/review-terms')
-  @Roles(UserRole.REGISTRAR, UserRole.ADMIN)
-  reviewTerms(
-    @Param('id') id: string,
-    @Body('action') action: 'APPROVE' | 'REJECT',
-    @Body('note')   note:   string,
-    @CurrentUser()  user:   JwtPayload,
-  ) {
-    return this.transferService.registrarReviewTerms(id, action, note, user);
-  }
+  // ── Step 2: Buyer uploads proof of payment ────────────────────────────────
 
   @Post(':id/pop')
   @Roles(UserRole.USER, UserRole.REGISTRAR)
@@ -77,13 +60,15 @@ export class TransferController {
     @Res() res: Response,
   ) {
     const { filePath, fileName } = await this.transferService.servePop(id);
-    const ext = fileName.split('.').pop()?.toLowerCase();
+    const ext  = fileName.split('.').pop()?.toLowerCase();
     const mime = ext === 'pdf' ? 'application/pdf'
                : ext === 'png' ? 'image/png' : 'image/jpeg';
     res.setHeader('Content-Type', mime);
     res.setHeader('Content-Disposition', `inline; filename="${fileName}"`);
     createReadStream(filePath).pipe(res);
   }
+
+  // ── Step 3: Seller confirms or disputes payment ───────────────────────────
 
   @Patch(':id/seller-confirm')
   sellerConfirm(
@@ -95,6 +80,8 @@ export class TransferController {
     return this.transferService.sellerConfirmPayment(id, confirmed, note, user);
   }
 
+  // ── Step 4: Registrar final sign-off ─────────────────────────────────────
+
   @Patch(':id/registrar-complete')
   @Roles(UserRole.REGISTRAR, UserRole.ADMIN)
   registrarComplete(
@@ -105,7 +92,31 @@ export class TransferController {
     return this.transferService.registrarComplete(id, user, notes);
   }
 
-  // ── Shared ────────────────────────────────────────────────────────────────
+  // ── Certificate PDF ───────────────────────────────────────────────────────
+
+  @Get(':id/certificate')
+  async getCertificate(
+    @Param('id') id: string,
+    @Res() res: Response,
+  ) {
+    const pdfBuffer = await this.transferService.generateCertificate(id);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="transfer-certificate-${id}.pdf"`);
+    res.end(pdfBuffer);
+  }
+
+  // ── Cancel ────────────────────────────────────────────────────────────────
+
+  @Patch(':id/cancel')
+  cancel(
+    @Param('id')    id:   string,
+    @CurrentUser()  user: JwtPayload,
+    @Body('note')   note: string,
+  ) {
+    return this.transferService.cancel(id, user, note);
+  }
+
+  // ── Queries ───────────────────────────────────────────────────────────────
 
   @Get()
   @Roles(UserRole.REGISTRAR, UserRole.ADMIN)
@@ -129,14 +140,5 @@ export class TransferController {
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.transferService.findOne(id);
-  }
-
-  @Patch(':id/cancel')
-  cancel(
-    @Param('id')    id:   string,
-    @CurrentUser()  user: JwtPayload,
-    @Body('note')   note: string,
-  ) {
-    return this.transferService.cancel(id, user, note);
   }
 }

@@ -10,6 +10,7 @@ export interface AuthUser {
   fullName:      string;
   nationalId?:   string;
   phone?:        string;
+  blocklandId?:  string | null;
   roles:         UserRole[];
   walletAddress: string | null;
   isActive?:     boolean;
@@ -82,10 +83,12 @@ export interface PropertyDocument {
 }
 
 export type TransferStatus =
-  | 'PENDING_BUYER' | 'PENDING_REGISTRAR'
-  | 'PENDING_REGISTRAR_TERMS' | 'AWAITING_POP'
+  | 'PENDING_REGISTRAR' | 'AWAITING_PAYMENT'
   | 'PENDING_SELLER_CONFIRMATION' | 'PENDING_REGISTRAR_FINAL'
-  | 'CONFIRMED' | 'CANCELLED' | 'REJECTED';
+  | 'FROZEN' | 'EXPIRED'
+  | 'CONFIRMED' | 'CANCELLED' | 'REJECTED'
+  // Legacy
+  | 'PENDING_BUYER' | 'PENDING_REGISTRAR_TERMS' | 'AWAITING_POP';
 
 export type ListingStatus  = 'ACTIVE' | 'SOLD' | 'CANCELLED';
 export type InterestStatus = 'PENDING' | 'SELECTED' | 'NOT_SELECTED' | 'WITHDRAWN';
@@ -115,6 +118,10 @@ export interface Transfer {
   popUploadedAt?:        string | null;
   sellerConfirmedAt?:    string | null;
   paymentInstructions?:  string | null;
+  expiresAt?:            string | null;
+  frozenAt?:             string | null;
+  frozenReason?:         string | null;
+  certificateNumber?:    string | null;
   property?:        Property;
   seller?:          PublicUser;
   buyer?:           PublicUser;

@@ -79,6 +79,27 @@ export class Transfer extends BaseEntity {
   @Column({ name: 'payment_instructions', type: 'text', nullable: true })
   paymentInstructions: string | null;
 
+  // ── Expiry ───────────────────────────────────────────────────────────────
+  @Column({ name: 'expires_at', type: 'timestamptz', nullable: true })
+  expiresAt: Date | null;
+
+  @Column({ name: 'expiry_warning_sent_at', type: 'timestamptz', nullable: true })
+  expiryWarningSentAt: Date | null;
+
+  // ── Dispute freeze ────────────────────────────────────────────────────────
+  @Column({ name: 'frozen_at', type: 'timestamptz', nullable: true })
+  frozenAt: Date | null;
+
+  @Column({ name: 'frozen_reason', type: 'varchar', length: 500, nullable: true })
+  frozenReason: string | null;
+
+  @Column({ name: 'pre_freeze_status', type: 'varchar', length: 50, nullable: true })
+  preFreezeStatus: string | null;
+
+  // ── Certificate ───────────────────────────────────────────────────────────
+  @Column({ name: 'certificate_number', type: 'varchar', length: 30, nullable: true })
+  certificateNumber: string | null;
+
   // ── Relations ────────────────────────────────────────────────────────────
   @ManyToOne(() => Property, (prop) => prop.transfers, { onDelete: 'RESTRICT' })
   @JoinColumn({ name: 'property_id' })

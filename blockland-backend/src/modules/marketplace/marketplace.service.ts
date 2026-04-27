@@ -249,12 +249,15 @@ export class MarketplaceService {
       listing.property.status = PropertyStatus.PENDING_TRANSFER;
       await em.save(listing.property);
 
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 10);
+
       // Create marketplace transfer
       return em.save(em.create(Transfer, {
         propertyId:           listing.propertyId,
         sellerId:             user.sub,
         buyerId:              interest.buyerId,
-        status:               TransferStatus.PENDING_REGISTRAR_TERMS,
+        status:               TransferStatus.PENDING_REGISTRAR,
         marketplaceListingId: listingId,
         paymentMethod,
         paymentInstructions:  paymentInstructions || null,
@@ -262,6 +265,7 @@ export class MarketplaceService {
         maxPrice:             listing.maxPrice,
         saleValue:            null,
         notes:                null,
+        expiresAt,
       }));
     });
 
@@ -294,8 +298,8 @@ export class MarketplaceService {
                     `${addr ? ` at ${addr}` : ''}.\n\n` +
                     `Payment method: ${method}` +
                     instrBlock +
-                    `\n\nPlease log in to My Transfers to proceed. The registrar will review the terms first, ` +
-                    `after which you will be prompted to upload your proof of payment.`,
+                    `\n\nThe registrar will review the transfer first. ` +
+                    `You will receive payment instructions once the registrar approves it.`,
     }).catch(() => {});
 
     this.messagesService.notify({

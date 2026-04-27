@@ -57,18 +57,22 @@ export enum AcquisitionType {
 }
 
 export enum TransferStatus {
-  // Direct transfer flow
-  PENDING_BUYER     = 'PENDING_BUYER',
-  PENDING_REGISTRAR = 'PENDING_REGISTRAR',
-  // Marketplace flow
-  PENDING_REGISTRAR_TERMS      = 'PENDING_REGISTRAR_TERMS',
-  AWAITING_POP                 = 'AWAITING_POP',
-  PENDING_SELLER_CONFIRMATION  = 'PENDING_SELLER_CONFIRMATION',
-  PENDING_REGISTRAR_FINAL      = 'PENDING_REGISTRAR_FINAL',
-  // Terminal states (shared)
+  // ── Unified flow (both direct and marketplace) ───────────────────────────
+  PENDING_REGISTRAR           = 'PENDING_REGISTRAR',           // registrar legitimacy review
+  AWAITING_PAYMENT            = 'AWAITING_PAYMENT',            // buyer pays + uploads POP
+  PENDING_SELLER_CONFIRMATION = 'PENDING_SELLER_CONFIRMATION', // seller confirms payment
+  PENDING_REGISTRAR_FINAL     = 'PENDING_REGISTRAR_FINAL',     // registrar final sign-off
+  // ── Special states ────────────────────────────────────────────────────────
+  FROZEN    = 'FROZEN',    // blocked by active dispute
+  EXPIRED   = 'EXPIRED',   // auto-cancelled after 10 days inactivity
+  // ── Terminal states ───────────────────────────────────────────────────────
   CONFIRMED = 'CONFIRMED',
   CANCELLED = 'CANCELLED',
   REJECTED  = 'REJECTED',
+  // ── Legacy (kept for existing data only) ─────────────────────────────────
+  PENDING_BUYER            = 'PENDING_BUYER',
+  PENDING_REGISTRAR_TERMS  = 'PENDING_REGISTRAR_TERMS',
+  AWAITING_POP             = 'AWAITING_POP',
 }
 
 export enum ListingStatus {

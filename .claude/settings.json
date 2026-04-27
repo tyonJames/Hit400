@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git push *)",
+      "Bash(npx nest *)",
+      "Bash(node_modules/.bin/nest build *)",
+      "Bash(node -e \"const ts = require\\('typescript'\\); const cfg = ts.readConfigFile\\('tsconfig.json', ts.sys.readFile\\); console.log\\(JSON.stringify\\(cfg, null, 2\\)\\);\")",
+      "Bash(node ./node_modules/.bin/tsc)",
+      "PowerShell(cd \"c:\\\\Users\\\\Admin\\\\Documents\\\\HIT\\\\samples\\\\2\\\\blockland-backend\"; & \".\\\\node_modules\\\\.bin\\\\nest.cmd\" build 2>&1; Write-Host \"---exit:$LASTEXITCODE\"; Test-Path \"dist\\\\main.js\")",
+      "Bash(npm install *)",
+      "Bash(grep -E \"\\\\.ts$|\\\\.tsx$\")",
+      "Bash(grep -E \"\\\\.\\(ts|tsx\\)$\")"
+    ]
+  }
+}
