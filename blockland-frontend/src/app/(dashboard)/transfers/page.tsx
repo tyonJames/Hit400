@@ -11,18 +11,30 @@ import { ROUTES }          from '@/lib/navigation';
 import type { Transfer }   from '@/types';
 
 const PENDING_STATUSES = new Set([
-  'PENDING_BUYER', 'PENDING_REGISTRAR',
-  'PENDING_REGISTRAR_TERMS', 'AWAITING_POP',
+  'PENDING_REGISTRAR', 'AWAITING_PAYMENT',
   'PENDING_SELLER_CONFIRMATION', 'PENDING_REGISTRAR_FINAL',
+  'FROZEN',
+  // Legacy
+  'PENDING_BUYER', 'PENDING_REGISTRAR_TERMS', 'AWAITING_POP',
 ]);
 
-function actionLabel(transfer: Transfer, userId?: string): string | null {
+function actionLabel(transfer: Transfer, userId?: string, isRegistrar = false): string | null {
   const isBuyer  = transfer.buyerId  === userId;
   const isSeller = transfer.sellerId === userId;
   switch (transfer.status) {
-    case 'PENDING_BUYER':                return isBuyer  ? 'Your approval needed' : null;
-    case 'AWAITING_POP':                 return isBuyer  ? 'Upload proof of payment' : null;
-    case 'PENDING_SELLER_CONFIRMATION':  return isSeller ? 'Confirm payment received' : null;
+    case 'PENDING_REGISTRAR':
+      return isRegistrar ? 'Review required' : null;
+    case 'AWAITING_PAYMENT':
+      return isBuyer ? 'Upload proof of payment' : null;
+    case 'PENDING_SELLER_CONFIRMATION':
+      return isSeller ? 'Confirm payment received' : null;
+    case 'PENDING_REGISTRAR_FINAL':
+      return isRegistrar ? 'Final sign-off needed' : null;
+    // Legacy
+    case 'PENDING_BUYER':
+      return isBuyer ? 'Your approval needed' : null;
+    case 'AWAITING_POP':
+      return isBuyer ? 'Upload proof of payment' : null;
     default: return null;
   }
 }
@@ -93,7 +105,7 @@ export default function TransfersPage() {
               </h3>
               <div className="card p-0 overflow-hidden divide-y divide-slate-50">
                 {pending.map((t) => {
-                  const action = isUser ? actionLabel(t, user?.id) : null;
+                  const action = actionLabel(t, user?.id, isRegistrar);
                   return (
                     <Link
                       key={t.id}
