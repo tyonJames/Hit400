@@ -23,7 +23,7 @@ export class BlockchainService {
   constructor(private configService: ConfigService) {
     const networkName = configService.get<string>('STACKS_NETWORK', 'testnet');
     this.network = networkName === 'mainnet' ? new StacksMainnet() : new StacksTestnet();
-    this.contractAddress = configService.get<string>('CLARITY_CONTRACT_ADDRESS', '');
+    this.contractAddress = configService.get<string>('STACKS_CONTRACT_ADDRESS', '');
     this.contractName    = configService.get<string>('STACKS_CONTRACT_NAME', 'blockland');
   }
 
