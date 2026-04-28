@@ -118,8 +118,8 @@ export class TransferService {
   // ── Queries ───────────────────────────────────────────────────────────────
 
   async findAll(params: { page?: number; limit?: number; status?: TransferStatus }) {
-    const page  = params.page  ?? 1;
-    const limit = params.limit ?? 20;
+    const page  = Math.max(1, Number(params.page)  || 1);
+    const limit = Math.max(1, Number(params.limit) || 20);
     const where: any = {};
     if (params.status) where.status = params.status;
     const [data, total] = await this.transferRepo.findAndCount({
@@ -133,8 +133,8 @@ export class TransferService {
   }
 
   async findMine(userId: string, params: { page?: number; limit?: number }) {
-    const page  = params.page  ?? 1;
-    const limit = params.limit ?? 20;
+    const page  = Math.max(1, Number(params.page)  || 1);
+    const limit = Math.max(1, Number(params.limit) || 20);
     const [data, total] = await this.transferRepo.findAndCount({
       where: [{ sellerId: userId }, { buyerId: userId }],
       order: { initiatedAt: 'DESC' },

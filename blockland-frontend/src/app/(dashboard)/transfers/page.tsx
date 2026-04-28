@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Plus, ArrowLeftRight, Clock } from 'lucide-react';
+import { toast } from 'sonner';
 import { transferService } from '@/lib/api/services';
 import { useAuthStore }    from '@/stores/auth.store';
 import { StatusBadge }     from '@/components/shared/status-badge';
@@ -58,6 +59,7 @@ export default function TransfersPage() {
         const rows = Array.isArray(res) ? res : (res?.data ?? []);
         setTransfers(rows);
       })
+      .catch((err: any) => toast.error(err?.message ?? 'Failed to load transfers'))
       .finally(() => setLoading(false));
   }, []);
 
