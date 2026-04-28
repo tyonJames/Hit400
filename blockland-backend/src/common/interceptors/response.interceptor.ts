@@ -1,5 +1,5 @@
 import {
-  Injectable, NestInterceptor, ExecutionContext, CallHandler,
+  Injectable, NestInterceptor, ExecutionContext, CallHandler, StreamableFile,
 } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { map }        from 'rxjs/operators';
@@ -8,11 +8,10 @@ import { map }        from 'rxjs/operators';
 export class ResponseInterceptor<T> implements NestInterceptor<T, any> {
   intercept(_context: ExecutionContext, next: CallHandler): Observable<any> {
     return next.handle().pipe(
-      map((data) => ({
-        success:   true,
-        data,
-        timestamp: new Date().toISOString(),
-      })),
+      map((data) => {
+        if (data instanceof StreamableFile) return data;
+        return { success: true, data, timestamp: new Date().toISOString() };
+      }),
     );
   }
 }
