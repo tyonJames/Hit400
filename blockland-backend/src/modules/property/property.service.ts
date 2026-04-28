@@ -172,8 +172,14 @@ export class PropertyService {
     const owner = await this.userRepo.findOne({ where: { id: property.currentOwnerId } });
     if (!owner) throw new NotFoundException('Property owner not found.');
 
-    const count   = await this.propertyRepo.count({ where: { status: PropertyStatus.ACTIVE } });
-    const tokenId = count + 1;
+    // Derive next tokenId from the actual max numeric tokenId already in use,
+    // so approval never conflicts with previously assigned ids.
+    const maxRow = await this.propertyRepo
+      .createQueryBuilder('p')
+      .select("MAX(CAST(p.tokenId AS INTEGER))", 'max')
+      .where("p.tokenId ~ '^[0-9]+$'")
+      .getRawOne<{ max: string | null }>();
+    const tokenId = (parseInt(maxRow?.max ?? '0', 10) || 0) + 1;
 
     // Use the comprehensive record hash (property fields + doc hashes) as the
     // on-chain fingerprint. Falls back to titleDeedNumber hash for legacy records.
