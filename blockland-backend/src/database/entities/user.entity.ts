@@ -1,6 +1,7 @@
 import {
   Entity, Column, Index, OneToMany, Check,
 } from 'typeorm';
+import { Exclude } from 'class-transformer';
 import { BaseEntity }        from './base.entity';
 import { UserRole as UserRoleEntity } from './user-role.entity';
 import { AuthToken }         from './auth-token.entity';
@@ -34,6 +35,7 @@ export class User extends BaseEntity {
   @Column({ name: 'phone', type: 'varchar', length: 15 })
   phone: string;
 
+  @Exclude()
   @Column({ name: 'password_hash', type: 'varchar', length: 255 })
   passwordHash: string;
 

@@ -8,6 +8,7 @@ import { CreateListingDto }    from './dto/create-listing.dto';
 import { ExpressInterestDto }  from './dto/express-interest.dto';
 import { CurrentUser }         from '../../common/decorators/current-user.decorator';
 import { Roles }               from '../../common/decorators/roles.decorator';
+import { Public }              from '../../common/decorators/public.decorator';
 import { UserRole }            from '../../database/enums';
 import { JwtPayload }          from '../auth/strategies/jwt.strategy';
 
@@ -20,6 +21,7 @@ export class MarketplaceController {
   // ── Listings ──────────────────────────────────────────────────────────────
 
   @Get()
+  @Public()
   findAll(
     @CurrentUser() user: JwtPayload,
     @Query('page')     page?:     number,
