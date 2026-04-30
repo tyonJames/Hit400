@@ -69,8 +69,8 @@ export class MarketplaceService {
   }
 
   async findAll(params: { page?: number; limit?: number; search?: string; minPrice?: number; maxPrice?: number }) {
-    const page  = params.page  ?? 1;
-    const limit = params.limit ?? 20;
+    const page  = Math.max(1, Number(params.page)  || 1);
+    const limit = Math.min(100, Math.max(1, Number(params.limit) || 20));
     const qb = this.listingRepo.createQueryBuilder('l')
       .leftJoinAndSelect('l.property', 'p')
       .leftJoinAndSelect('l.seller', 'seller')
@@ -85,8 +85,8 @@ export class MarketplaceService {
         { s: `%${params.search}%` },
       );
     }
-    if (params.minPrice) qb.andWhere('l.max_price >= :min', { min: params.minPrice });
-    if (params.maxPrice) qb.andWhere('l.min_price <= :max', { max: params.maxPrice });
+    if (params.minPrice) qb.andWhere('l.max_price >= :min', { min: Number(params.minPrice) });
+    if (params.maxPrice) qb.andWhere('l.min_price <= :max', { max: Number(params.maxPrice) });
 
     const [data, total] = await qb.getManyAndCount();
     return { data, total, page, limit };
