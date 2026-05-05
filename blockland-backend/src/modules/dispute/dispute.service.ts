@@ -34,7 +34,9 @@ export class DisputeService {
       throw new ConflictException('Property already has an active dispute.');
     }
 
-    const registrarKey = this.configService.get<string>('STACKS_REGISTRAR_PRIVATE_KEY', '');
+    const registrarKey =
+      this.configService.get<string>('STACKS_REGISTRAR_PRIVATE_KEY') ??
+      this.configService.get<string>('STACKS_DEPLOYER_PRIVATE_KEY', '');
     const tokenId = parseInt(property.tokenId ?? '0', 10) || 0;
     let txid: string;
     if (registrarKey && tokenId > 0) {
@@ -118,7 +120,9 @@ export class DisputeService {
       throw new ConflictException('Dispute already resolved.');
     }
 
-    const registrarKey = this.configService.get<string>('STACKS_REGISTRAR_PRIVATE_KEY', '');
+    const registrarKey =
+      this.configService.get<string>('STACKS_REGISTRAR_PRIVATE_KEY') ??
+      this.configService.get<string>('STACKS_DEPLOYER_PRIVATE_KEY', '');
     const tokenId = parseInt(dispute.property.tokenId ?? '0', 10) || 0;
     let txid: string;
     if (registrarKey && tokenId > 0) {
