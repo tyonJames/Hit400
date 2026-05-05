@@ -1,6 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  transpilePackages: ['@stacks/connect', '@stacks/auth', '@stacks/wallet-sdk'],
   images: {
     remotePatterns: [
       { protocol: 'https', hostname: 'gateway.pinata.cloud' },

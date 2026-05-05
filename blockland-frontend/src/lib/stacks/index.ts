@@ -20,8 +20,21 @@ const CONTRACT_ADDRESS  = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS ?? '';
 const CONTRACT_NAME     = process.env.NEXT_PUBLIC_CONTRACT_NAME ?? 'blockland';
 const STACKS_EXPLORER   = process.env.NEXT_PUBLIC_STACKS_EXPLORER ?? 'https://explorer.hiro.so';
 
-const appConfig = new AppConfig(['store_write', 'publish_data']);
-export const userSession = new UserSession({ appConfig });
+// Lazy-init: @stacks/connect accesses localStorage on construction,
+// which crashes during Next.js SSR. getSession() is only ever called
+// from event handlers and useEffect — never at module evaluation time.
+let _session: UserSession | null = null;
+function getSession(): UserSession {
+  if (!_session) {
+    const appConfig = new AppConfig(['store_write', 'publish_data']);
+    _session = new UserSession({ appConfig });
+  }
+  return _session;
+}
+// Keep the named export for any code that imports userSession directly.
+export const userSession = new Proxy({} as UserSession, {
+  get: (_t, prop) => (getSession() as any)[prop],
+});
 
 export function connectWallet(options: {
   onSuccess: (address: string) => void;
