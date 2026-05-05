@@ -86,7 +86,7 @@ interface TxHashDisplayProps {
 }
 
 export function TxHashDisplay({ txHash, network = 'testnet', label = 'TX' }: TxHashDisplayProps) {
-  const isSimulated = txHash.startsWith('sim-');
+  const isSimulated = txHash.startsWith('sim-') || txHash.startsWith('mock-');
   const explorerUrl = `https://explorer.hiro.so/txid/${txHash}?chain=${network}`;
   const short = txHash.length > 16 ? `${txHash.slice(0, 8)}...${txHash.slice(-8)}` : txHash;
 

@@ -1,6 +1,6 @@
 import {
   Injectable, NotFoundException, ConflictException, BadRequestException,
-  StreamableFile,
+  StreamableFile, Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource, FindOptionsWhere, In, ILike } from 'typeorm';
@@ -22,6 +22,8 @@ import { JwtPayload }          from '../auth/strategies/jwt.strategy';
 
 @Injectable()
 export class PropertyService {
+  private readonly logger = new Logger(PropertyService.name);
+
   constructor(
     @InjectRepository(Property)         private propertyRepo: Repository<Property>,
     @InjectRepository(User)             private userRepo: Repository<User>,
@@ -186,7 +188,9 @@ export class PropertyService {
     const recordHash = property.recordHash
       ?? crypto.createHash('sha256').update(property.titleDeedNumber).digest('hex');
 
-    const registrarKey = this.configService.get<string>('STACKS_REGISTRAR_PRIVATE_KEY', '');
+    const registrarKey =
+      this.configService.get<string>('STACKS_REGISTRAR_PRIVATE_KEY') ??
+      this.configService.get<string>('STACKS_DEPLOYER_PRIVATE_KEY', '');
     const ownerAddress = owner.walletAddress && /^S[PT][A-Z0-9]{38,39}$/.test(owner.walletAddress)
       ? owner.walletAddress
       : 'SP000000000000000000002Q6VF78';
@@ -194,16 +198,21 @@ export class PropertyService {
     const ipfsHash = `ipfs-${recordHash.slice(0, 40)}`;
 
     let txid: string;
-    if (!registrarKey || !this.configService.get<string>('CLARITY_CONTRACT_ADDRESS', '')) {
-      txid = `mock-tx-${crypto.randomBytes(16).toString('hex')}`;
+    if (!registrarKey || !this.configService.get<string>('STACKS_CONTRACT_ADDRESS', '')) {
+      txid = `sim-${Date.now()}-${id.slice(0, 8)}`;
     } else {
-      txid = await this.blockchainService.registerProperty({
-        propertyId:    tokenId,
-        titleDeedHash: recordHash,
-        ownerAddress,
-        ipfsHash,
-        senderKey:     registrarKey,
-      });
+      try {
+        txid = await this.blockchainService.registerProperty({
+          propertyId:    tokenId,
+          titleDeedHash: recordHash,
+          ownerAddress,
+          ipfsHash,
+          senderKey:     registrarKey,
+        });
+      } catch (err: any) {
+        this.logger.warn(`Blockchain register failed (continuing off-chain): ${err?.message}`);
+        txid = `sim-${Date.now()}-${id.slice(0, 8)}`;
+      }
     }
 
     await this.dataSource.transaction(async (em) => {

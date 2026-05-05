@@ -8,6 +8,7 @@ import {
   AlertTriangle, FileText, Clock, CreditCard, Snowflake,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { signBuyerApproveTransfer } from '@/lib/stacks';
 import { transferService } from '@/lib/api/services';
 import { formatMoney, formatRange } from '@/lib/format';
 import { useAuthStore }    from '@/stores/auth.store';
@@ -474,6 +475,33 @@ export default function TransferDetailPage() {
               </button>
             )}
           </div>
+        </div>
+      )}
+
+      {/* ── Buyer blockchain sign-off (optional, after POP upload) ── */}
+      {isBuyer && transfer.status === 'PENDING_SELLER_CONFIRMATION' && transfer.property?.tokenId && (
+        <div className="card border border-teal-200 bg-teal-50 space-y-2">
+          <div className="flex items-center gap-2">
+            <CheckCircle className="w-4 h-4 text-teal-600 shrink-0" />
+            <p className="font-medium text-teal-800 text-sm">Optional: Sign Approval on Blockchain</p>
+          </div>
+          <p className="text-sm text-teal-700">
+            Optionally anchor your buyer approval to the Stacks blockchain via your Hiro wallet.
+            This does not affect the transfer — it&apos;s an on-chain record of your consent.
+          </p>
+          <button
+            type="button"
+            className="btn-secondary text-sm border-teal-300 text-teal-700 hover:bg-teal-100"
+            onClick={() =>
+              signBuyerApproveTransfer(
+                parseInt(transfer.property!.tokenId!, 10),
+                (txid) => toast.success(`Signed on blockchain! TX: ${txid.slice(0, 16)}…`),
+                () => toast.info('Wallet signing cancelled.'),
+              )
+            }
+          >
+            Sign with Hiro Wallet
+          </button>
         </div>
       )}
 
