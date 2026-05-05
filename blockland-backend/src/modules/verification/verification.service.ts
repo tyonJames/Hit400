@@ -1,7 +1,8 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository }  from '@nestjs/typeorm';
-import { Repository }        from 'typeorm';
+import { Repository, ILike } from 'typeorm';
 import { Property }          from '../../database/entities/property.entity';
+import { User }              from '../../database/entities/user.entity';
 import { VerificationLog }   from '../../database/entities/verification-log.entity';
 import { BlockchainService } from '../blockchain/blockchain.service';
 import { VerificationQueryType, VerificationResultStatus } from '../../database/enums';
@@ -10,18 +11,22 @@ import { VerificationQueryType, VerificationResultStatus } from '../../database/
 export class VerificationService {
   constructor(
     @InjectRepository(Property)        private propertyRepo: Repository<Property>,
+    @InjectRepository(User)            private userRepo: Repository<User>,
     @InjectRepository(VerificationLog) private logRepo: Repository<VerificationLog>,
     private blockchainService: BlockchainService,
   ) {}
 
   async verify(params: {
-    plotNumber?:       string;
-    titleDeedNumber?:  string;
-    ownerId?:          string;
+    plotNumber?:      string;
+    titleDeedNumber?: string;
+    nationalId?:      string;
+    ownerName?:       string;
   }, ipAddress?: string) {
     let property: Property | null = null;
-    let queryType = VerificationQueryType.PROPERTY_ID;
+    let properties: Property[]    = [];
+    let queryType  = VerificationQueryType.PROPERTY_ID;
     let queryValue = '';
+    let multiResult = false;
 
     if (params.plotNumber) {
       queryType  = VerificationQueryType.TITLE_DEED;
@@ -37,13 +42,56 @@ export class VerificationService {
         where: { titleDeedNumber: params.titleDeedNumber },
         relations: ['currentOwner'],
       });
-    } else if (params.ownerId) {
+    } else if (params.nationalId) {
       queryType  = VerificationQueryType.OWNER_ID;
-      queryValue = params.ownerId;
-      property   = await this.propertyRepo.findOne({
-        where: { currentOwnerId: params.ownerId },
-        relations: ['currentOwner'],
-      });
+      queryValue = params.nationalId;
+      const owner = await this.userRepo.findOne({ where: { nationalId: params.nationalId } });
+      if (owner) {
+        properties = await this.propertyRepo.find({
+          where: { currentOwnerId: owner.id },
+          relations: ['currentOwner'],
+        });
+        multiResult = true;
+      }
+    } else if (params.ownerName) {
+      queryType  = VerificationQueryType.OWNER_ID;
+      queryValue = params.ownerName;
+      const owners = await this.userRepo.find({ where: { fullName: ILike(`%${params.ownerName}%`) } });
+      if (owners.length) {
+        const ownerIds = owners.map(o => o.id);
+        properties = await this.propertyRepo
+          .createQueryBuilder('p')
+          .leftJoinAndSelect('p.currentOwner', 'owner')
+          .where('p.current_owner_id = ANY(:ids)', { ids: ownerIds })
+          .getMany();
+        multiResult = true;
+      }
+    }
+
+    // Multi-property result (nationalId / ownerName search)
+    if (multiResult) {
+      await this.logRepo.save(this.logRepo.create({
+        queryType, queryValue,
+        resultStatus: properties.length ? VerificationResultStatus.VERIFIED : VerificationResultStatus.NOT_FOUND,
+        ipAddress,
+      }));
+      if (!properties.length) {
+        return { status: VerificationResultStatus.NOT_FOUND, message: 'No properties found for this owner.' };
+      }
+      return {
+        status: VerificationResultStatus.VERIFIED,
+        message: `Found ${properties.length} propert${properties.length === 1 ? 'y' : 'ies'} registered to this owner.`,
+        properties: properties.map(p => ({
+          id:               p.id,
+          plotNumber:       p.plotNumber,
+          titleDeedNumber:  p.titleDeedNumber,
+          address:          p.address,
+          status:           p.status,
+          registrationDate: p.registrationDate,
+          blockchainTxHash: p.blockchainTxHash,
+          owner:            p.currentOwner ? { fullName: p.currentOwner.fullName } : undefined,
+        })),
+      };
     }
 
     if (!property) {
@@ -69,6 +117,7 @@ export class VerificationService {
       property: {
         id:               property.id,
         plotNumber:       property.plotNumber,
+        titleDeedNumber:  property.titleDeedNumber,
         address:          property.address,
         status:           property.status,
         registrationDate: property.registrationDate,

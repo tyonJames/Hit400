@@ -1,14 +1,15 @@
 import {
   Controller, Get, Post, Patch, Param, Body, Query,
-  UseInterceptors, UploadedFile, Res,
+  UseInterceptors, UploadedFile, Res, Req,
 } from '@nestjs/common';
 import { FileInterceptor }   from '@nestjs/platform-express';
 import { ApiTags, ApiBearerAuth, ApiConsumes } from '@nestjs/swagger';
-import { Response }          from 'express';
+import { Response, Request } from 'express';
 import { createReadStream }  from 'fs';
 import { TransferService }   from './transfer.service';
 import { CreateTransferDto } from './dto/create-transfer.dto';
 import { CurrentUser }       from '../../common/decorators/current-user.decorator';
+import { Public }            from '../../common/decorators/public.decorator';
 import { Roles }             from '../../common/decorators/roles.decorator';
 import { UserRole, TransferStatus } from '../../database/enums';
 import { JwtPayload }        from '../auth/strategies/jwt.strategy';
@@ -114,6 +115,18 @@ export class TransferController {
     @Body('note')   note: string,
   ) {
     return this.transferService.cancel(id, user, note);
+  }
+
+  // ── Public ledger (no auth) ───────────────────────────────────────────────
+
+  @Public()
+  @Get('public')
+  findPublic(
+    @Query('page')   page?:   number,
+    @Query('limit')  limit?:  number,
+    @Query('search') search?: string,
+  ) {
+    return this.transferService.findPublic({ page, limit, search });
   }
 
   // ── Queries ───────────────────────────────────────────────────────────────

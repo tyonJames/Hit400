@@ -12,12 +12,13 @@ export class VerificationController {
   @Public()
   @Get()
   verify(
-    @Query('plotNumber') plotNumber?: string,
+    @Query('plotNumber')      plotNumber?:      string,
     @Query('titleDeedNumber') titleDeedNumber?: string,
-    @Query('ownerId') ownerId?: string,
+    @Query('nationalId')      nationalId?:      string,
+    @Query('ownerName')       ownerName?:       string,
     @Req() req?: Request,
   ) {
-    return this.verificationService.verify({ plotNumber, titleDeedNumber, ownerId }, req?.ip);
+    return this.verificationService.verify({ plotNumber, titleDeedNumber, nationalId, ownerName }, req?.ip);
   }
 
   @Public()

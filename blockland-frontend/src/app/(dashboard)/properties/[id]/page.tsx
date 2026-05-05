@@ -14,7 +14,8 @@ import { ROUTES }                         from '@/lib/navigation';
 import { toast }                          from 'sonner';
 import type { Property, PropertyDocument } from '@/types';
 
-const NETWORK = process.env.NEXT_PUBLIC_STACKS_NETWORK ?? 'testnet';
+const NETWORK      = process.env.NEXT_PUBLIC_STACKS_NETWORK ?? 'testnet';
+const IPFS_GATEWAY = process.env.NEXT_PUBLIC_IPFS_GATEWAY  ?? 'https://gateway.pinata.cloud';
 
 const DOC_LABELS: Record<string, string> = {
   TITLE_DEED:             'Title Deed',
@@ -282,7 +283,7 @@ export default function PropertyDetailPage() {
               )}
               {property.ipfsHash && (
                 <a
-                  href={`https://gateway.pinata.cloud/ipfs/${property.ipfsHash}`}
+                  href={`${IPFS_GATEWAY}/ipfs/${property.ipfsHash}`}
                   target="_blank" rel="noopener noreferrer"
                   className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline"
                 >

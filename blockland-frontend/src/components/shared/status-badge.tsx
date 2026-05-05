@@ -86,25 +86,35 @@ interface TxHashDisplayProps {
 }
 
 export function TxHashDisplay({ txHash, network = 'testnet', label = 'TX' }: TxHashDisplayProps) {
+  const isSimulated = txHash.startsWith('sim-');
   const explorerUrl = `https://explorer.hiro.so/txid/${txHash}?chain=${network}`;
   const short = txHash.length > 16 ? `${txHash.slice(0, 8)}...${txHash.slice(-8)}` : txHash;
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-2 flex-wrap">
       <span className="text-label text-slate-500 uppercase tracking-widest">{label}</span>
-      <a
-        href={explorerUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="font-mono text-hash text-primary hover:text-primary-light
-                   hover:underline transition-colors inline-flex items-center gap-1"
-        title={`View on Stacks Explorer: ${txHash}`}
-      >
-        {short}
-        <svg className="w-3 h-3 opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3" />
-        </svg>
-      </a>
+      {isSimulated ? (
+        <span className="inline-flex items-center gap-1.5 font-mono text-hash text-slate-400 bg-slate-100 border border-slate-200 rounded px-2 py-0.5 text-xs">
+          <svg className="w-3 h-3 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+          </svg>
+          Simulated — not on-chain
+        </span>
+      ) : (
+        <a
+          href={explorerUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="font-mono text-hash text-primary hover:text-primary-light
+                     hover:underline transition-colors inline-flex items-center gap-1"
+          title={`View on Stacks Explorer: ${txHash}`}
+        >
+          {short}
+          <svg className="w-3 h-3 opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3" />
+          </svg>
+        </a>
+      )}
     </div>
   );
 }

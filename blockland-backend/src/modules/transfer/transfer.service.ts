@@ -3,9 +3,9 @@ import {
   ConflictException, BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource } from 'typeorm';
-import * as fs   from 'fs';
-import * as path from 'path';
+import { Repository, DataSource, ILike, Or } from 'typeorm';
+import * as fs    from 'fs';
+import * as path  from 'path';
 import PDFDocument from 'pdfkit';
 import { ConfigService }    from '@nestjs/config';
 import { Transfer }         from '../../database/entities/transfer.entity';
@@ -51,6 +51,56 @@ export class TransferService {
     private configService:      ConfigService,
     private dataSource:         DataSource,
   ) {}
+
+  // ── Public ledger ─────────────────────────────────────────────────────────
+
+  async findPublic(params: { page?: number; limit?: number; search?: string }) {
+    const page  = Math.max(1, Number(params.page)  || 1);
+    const limit = Math.min(50, Math.max(1, Number(params.limit) || 20));
+
+    const qb = this.transferRepo.createQueryBuilder('t')
+      .leftJoin('t.property', 'prop')
+      .leftJoin('t.seller',   'seller')
+      .leftJoin('t.buyer',    'buyer')
+      .select([
+        't.id', 't.blockchainTxHash', 't.certificateNumber',
+        't.confirmedAt', 't.initiatedAt',
+        'prop.plotNumber', 'prop.address', 'prop.titleDeedNumber',
+        'seller.fullName',
+        'buyer.fullName',
+      ])
+      .where('t.status = :status', { status: TransferStatus.CONFIRMED });
+
+    if (params.search) {
+      qb.andWhere(
+        '(prop.plot_number ILIKE :q OR prop.address ILIKE :q OR seller.full_name ILIKE :q OR buyer.full_name ILIKE :q)',
+        { q: `%${params.search}%` },
+      );
+    }
+
+    const [data, total] = await qb
+      .orderBy('t.confirmed_at', 'DESC')
+      .skip((page - 1) * limit)
+      .take(limit)
+      .getManyAndCount();
+
+    return {
+      data: data.map(t => ({
+        id:                 t.id,
+        plotNumber:         (t as any).property?.plotNumber        ?? '—',
+        titleDeedNumber:    (t as any).property?.titleDeedNumber   ?? '—',
+        address:            (t as any).property?.address           ?? '—',
+        sellerName:         (t as any).seller?.fullName            ?? '—',
+        buyerName:          (t as any).buyer?.fullName             ?? '—',
+        confirmedAt:        t.confirmedAt,
+        certificateNumber:  t.certificateNumber,
+        blockchainTxHash:   t.blockchainTxHash,
+      })),
+      total,
+      page,
+      limit,
+    };
+  }
 
   // ── Initiate (unified — used by direct path and marketplace selectBuyer) ──
 

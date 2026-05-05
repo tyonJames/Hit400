@@ -23,23 +23,24 @@ export default function VerifyPage() {
 
   const { register, handleSubmit, watch, formState: { errors } } = useForm<VerificationFormData>({
     resolver: zodResolver(verificationSchema),
-    defaultValues: { searchType: 'plotNumber', searchValue: '' },
+    defaultValues: { searchType: 'plotNumber', searchValue: '' } as any,
   });
 
   const searchType = watch('searchType');
 
   const PLACEHOLDER: Record<string, string> = {
-    plotNumber:      'e.g. HRE-12345',
-    titleDeedNumber: 'e.g. TD-20240001',
-    ownerId:         'UUID of the property owner',
+    plotNumber:      'e.g. ZW-HAR-0042',
+    titleDeedNumber: 'e.g. TD-HAR-001042',
+    nationalId:      'e.g. 63-7142110A71',
+    ownerName:       'e.g. Tendai Moyo',
   };
 
-  async function onSubmit(data: VerificationFormData) {
+  async function onSubmit(data: any) {
     setLoading(true);
     setResult(null);
     setError(null);
     try {
-      const params = { [data.searchType]: data.searchValue } as any;
+      const params = { [data.searchType]: data.searchValue };
       const res = await verificationService.verify(params);
       setResult(res);
     } catch (err: any) {
@@ -59,6 +60,9 @@ export default function VerifyPage() {
           </div>
           <span className="font-display text-white text-lg">BlockLand Zimbabwe</span>
         </div>
+        <Link href="/public/transfers" className="text-sidebar-muted hover:text-white text-sm transition-colors">
+          Transfer Records
+        </Link>
         <Link href={ROUTES.LOGIN} className="btn-secondary text-xs">
           Sign in
         </Link>
@@ -84,17 +88,20 @@ export default function VerifyPage() {
               <div>
                 <label className="label">Search by</label>
                 <div className="flex gap-2">
-                  {(['plotNumber', 'titleDeedNumber', 'ownerId'] as const).map((type) => (
-                    <label key={type} className="flex-1">
-                      <input type="radio" value={type} {...register('searchType')} className="sr-only" />
-                      <span className={`block text-center px-3 py-2 rounded-lg border text-sm font-medium
+                  {([
+                    { value: 'plotNumber',      label: 'Plot Number'    },
+                    { value: 'titleDeedNumber', label: 'Title Deed'     },
+                    { value: 'nationalId',      label: 'National ID'    },
+                    { value: 'ownerName',       label: 'Owner Name'     },
+                  ]).map(({ value, label }) => (
+                    <label key={value} className="flex-1">
+                      <input type="radio" value={value} {...register('searchType')} className="sr-only" />
+                      <span className={`block text-center px-2 py-2 rounded-lg border text-xs font-medium
                                        cursor-pointer transition-colors
-                                       ${searchType === type
+                                       ${searchType === value
                                          ? 'bg-primary text-white border-primary'
                                          : 'bg-white text-slate-600 border-slate-200 hover:border-primary/40'}`}>
-                        {type === 'plotNumber' ? 'Plot Number'
-                          : type === 'titleDeedNumber' ? 'Title Deed'
-                          : 'Owner ID'}
+                        {label}
                       </span>
                     </label>
                   ))}
@@ -127,11 +134,11 @@ export default function VerifyPage() {
 
           {/* Result */}
           {result && (
-            <div className="bg-white rounded-2xl shadow-modal p-6">
-              <div className="flex items-start gap-3 mb-4">
-                {result.status === 'VERIFIED' && <CheckCircle className="w-6 h-6 text-emerald-500 flex-shrink-0 mt-0.5" />}
-                {result.status === 'MISMATCH'  && <AlertTriangle className="w-6 h-6 text-amber-500 flex-shrink-0 mt-0.5" />}
-                {result.status === 'NOT_FOUND' && <XCircle className="w-6 h-6 text-slate-400 flex-shrink-0 mt-0.5" />}
+            <div className="bg-white rounded-2xl shadow-modal p-6 space-y-4">
+              <div className="flex items-start gap-3">
+                {result.status === 'VERIFIED'  && <CheckCircle   className="w-6 h-6 text-emerald-500 flex-shrink-0 mt-0.5" />}
+                {result.status === 'MISMATCH'  && <AlertTriangle className="w-6 h-6 text-amber-500  flex-shrink-0 mt-0.5" />}
+                {result.status === 'NOT_FOUND' && <XCircle       className="w-6 h-6 text-slate-400  flex-shrink-0 mt-0.5" />}
                 <div>
                   <div className="flex items-center gap-2 mb-1">
                     <StatusBadge status={result.status} animate />
@@ -140,8 +147,28 @@ export default function VerifyPage() {
                 </div>
               </div>
 
+              {/* Multi-property result (nationalId / ownerName) */}
+              {(result as any).properties && (
+                <div className="border-t border-slate-100 pt-4 space-y-3">
+                  {(result as any).properties.map((p: any) => (
+                    <div key={p.id} className="border border-slate-100 rounded-xl p-4 space-y-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-mono text-sm font-semibold text-slate-800">{p.plotNumber}</span>
+                        <StatusBadge status={p.status} size="sm" />
+                      </div>
+                      <p className="text-sm text-slate-600">{p.address}</p>
+                      {p.owner && <p className="text-xs text-slate-500">Owner: <span className="font-medium text-slate-700">{p.owner.fullName}</span></p>}
+                      {p.blockchainTxHash && (
+                        <TxHashDisplay txHash={p.blockchainTxHash} network={NETWORK as 'testnet' | 'mainnet'} label="TX" />
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Single property result (plotNumber / titleDeed) */}
               {result.property && (
-                <div className="border-t border-slate-100 pt-4 mt-4 space-y-3">
+                <div className="border-t border-slate-100 pt-4 space-y-3">
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
                       <p className="text-slate-500 text-xs font-medium uppercase tracking-wider mb-0.5">Plot Number</p>
@@ -168,25 +195,13 @@ export default function VerifyPage() {
                       </div>
                     )}
                   </div>
-
                   {result.property.blockchainTxHash && (
-                    <div className="pt-2">
-                      <TxHashDisplay
-                        txHash={result.property.blockchainTxHash}
-                        network={NETWORK as 'testnet' | 'mainnet'}
-                        label="Registration TX"
-                      />
-                    </div>
+                    <TxHashDisplay
+                      txHash={result.property.blockchainTxHash}
+                      network={NETWORK as 'testnet' | 'mainnet'}
+                      label="Registration TX"
+                    />
                   )}
-
-                  <a
-                    href={`https://explorer.hiro.so/txid/${result.property.blockchainTxHash}?chain=${NETWORK}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline mt-1"
-                  >
-                    View on Stacks Explorer <ExternalLink className="w-3 h-3" />
-                  </a>
                 </div>
               )}
             </div>
