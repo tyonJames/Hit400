@@ -74,6 +74,13 @@ export default function ProfilePage() {
         setConnectingWallet(false);
       },
       onCancel: () => setConnectingWallet(false),
+      onNotInstalled: () => {
+        setConnectingWallet(false);
+        toast.error(
+          'No Stacks wallet found. Install the Leather extension, then try again.',
+          { duration: 6000 },
+        );
+      },
     });
   }
 
@@ -135,8 +142,29 @@ export default function ProfilePage() {
           <>
             <button onClick={handleConnectWallet} disabled={connectingWallet} className="btn-secondary">
               <Wallet className="w-4 h-4" />
-              {connectingWallet ? 'Opening Hiro Wallet…' : 'Connect Hiro Wallet'}
+              {connectingWallet ? 'Opening wallet…' : 'Connect Stacks Wallet'}
             </button>
+            <p className="text-xs text-slate-400">
+              Requires the{' '}
+              <a
+                href="https://leather.io/install-extension"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary underline underline-offset-2"
+              >
+                Leather
+              </a>
+              {' '}or{' '}
+              <a
+                href="https://www.xverse.app/download"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary underline underline-offset-2"
+              >
+                Xverse
+              </a>
+              {' '}browser extension.
+            </p>
             <div className="text-slate-400 text-xs">or enter address manually:</div>
             <form onSubmit={walletForm.handleSubmit(onLinkWallet)} className="flex gap-2">
               <input

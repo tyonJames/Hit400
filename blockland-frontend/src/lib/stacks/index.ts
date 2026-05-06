@@ -7,6 +7,7 @@ import {
   UserSession,
   showConnect,
   openContractCall,
+  isStacksWalletInstalled,
 } from '@stacks/connect';
 import {
   uintCV,
@@ -15,14 +16,13 @@ import {
 } from '@stacks/transactions';
 import { STACKS_TESTNET } from '@stacks/network';
 
-const NETWORK_NAME      = (process.env.NEXT_PUBLIC_STACKS_NETWORK ?? 'testnet') as 'testnet' | 'mainnet';
-const CONTRACT_ADDRESS  = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS ?? '';
-const CONTRACT_NAME     = process.env.NEXT_PUBLIC_CONTRACT_NAME ?? 'blockland';
-const STACKS_EXPLORER   = process.env.NEXT_PUBLIC_STACKS_EXPLORER ?? 'https://explorer.hiro.so';
+const NETWORK_NAME     = (process.env.NEXT_PUBLIC_STACKS_NETWORK ?? 'testnet') as 'testnet' | 'mainnet';
+const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS ?? '';
+const CONTRACT_NAME    = process.env.NEXT_PUBLIC_CONTRACT_NAME ?? 'blockland';
+const STACKS_EXPLORER  = process.env.NEXT_PUBLIC_STACKS_EXPLORER ?? 'https://explorer.hiro.so';
 
-// Lazy-init: @stacks/connect accesses localStorage on construction,
-// which crashes during Next.js SSR. getSession() is only ever called
-// from event handlers and useEffect — never at module evaluation time.
+// Lazy singleton — UserSession reads localStorage on construction which
+// throws during Next.js SSR. Only created on first browser-side call.
 let _session: UserSession | null = null;
 function getSession(): UserSession {
   if (!_session) {
@@ -31,44 +31,49 @@ function getSession(): UserSession {
   }
   return _session;
 }
-// Keep the named export for any code that imports userSession directly.
-export const userSession = new Proxy({} as UserSession, {
-  get: (_t, prop) => (getSession() as any)[prop],
-});
+
+export function isWalletInstalled(): boolean {
+  return typeof window !== 'undefined' && isStacksWalletInstalled();
+}
 
 export function connectWallet(options: {
-  onSuccess: (address: string) => void;
-  onCancel?: () => void;
+  onSuccess:       (address: string) => void;
+  onCancel?:       () => void;
+  onNotInstalled?: () => void;
 }): void {
+  if (!isWalletInstalled()) {
+    options.onNotInstalled?.();
+    return;
+  }
   showConnect({
     appDetails: {
       name: 'BlockLand Zimbabwe',
       icon: `${window.location.origin}/logo.png`,
     },
-    userSession,
+    userSession: getSession(),
     redirectTo: '/',
     onFinish: (data) => {
-      const address = NETWORK_NAME === 'mainnet'
+      const addr = NETWORK_NAME === 'mainnet'
         ? data.userSession.loadUserData().profile.stxAddress.mainnet
         : data.userSession.loadUserData().profile.stxAddress.testnet;
-      options.onSuccess(address);
+      options.onSuccess(addr);
     },
     onCancel: options.onCancel,
   });
 }
 
 export function disconnectWallet(): void {
-  if (userSession.isUserSignedIn()) {
-    userSession.signUserOut();
-  }
+  const s = getSession();
+  if (s.isUserSignedIn()) s.signUserOut();
 }
 
 export function getConnectedWalletAddress(): string | null {
-  if (!userSession.isUserSignedIn()) return null;
-  const userData = userSession.loadUserData();
+  const s = getSession();
+  if (!s.isUserSignedIn()) return null;
+  const data = s.loadUserData();
   return NETWORK_NAME === 'mainnet'
-    ? userData.profile.stxAddress.mainnet
-    : userData.profile.stxAddress.testnet;
+    ? data.profile.stxAddress.mainnet
+    : data.profile.stxAddress.testnet;
 }
 
 export function txExplorerUrl(txid: string): string {
@@ -107,7 +112,7 @@ export async function signBuyerApproveTransfer(
       name: 'BlockLand Zimbabwe',
       icon: `${window.location.origin}/logo.png`,
     },
-    userSession,
+    userSession: getSession(),
     onFinish: (data) => onSuccess(data.txId),
     onCancel,
   });
