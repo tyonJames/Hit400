@@ -7,6 +7,7 @@ import {
   uintCV,
   principalCV,
   bufferCV,
+  noneCV,
   cvToValue,
   AnchorMode,
   PostConditionMode,
@@ -32,9 +33,8 @@ export class BlockchainService {
   // ---------------------------------------------------------------------------
   async registerProperty(params: {
     propertyId:    number;
-    titleDeedHash: string; // hex string
+    titleDeedHash: string; // hex string, 32 bytes
     ownerAddress:  string;
-    ipfsHash:      string;
     senderKey:     string;
   }): Promise<string> {
     try {
@@ -45,9 +45,9 @@ export class BlockchainService {
         functionName:     'register-property',
         functionArgs: [
           uintCV(params.propertyId),
-          bufferCV(Buffer.from(params.titleDeedHash, 'hex')),
           principalCV(params.ownerAddress),
-          bufferCV(Buffer.from(params.ipfsHash)),
+          bufferCV(Buffer.from(params.titleDeedHash, 'hex')),
+          noneCV(),
         ],
         senderKey:         params.senderKey,
         network:           this.network,

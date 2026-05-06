@@ -209,7 +209,6 @@ export class PropertyService {
           propertyId:    tokenId,
           titleDeedHash: recordHash,
           ownerAddress,
-          ipfsHash,
           senderKey:     registrarKey,
         });
       } catch (err: any) {
