@@ -5,7 +5,7 @@ import { useParams }   from 'next/navigation';
 import Link            from 'next/link';
 import {
   ArrowLeft, ExternalLink, CheckCircle, XCircle, Clock, AlertCircle,
-  ShieldCheck, Copy, ImageIcon, Download,
+  ShieldCheck, Copy, FileText, ImageIcon, Download,
 } from 'lucide-react';
 import { propertyService }                from '@/lib/api/services';
 import { StatusBadge, TxHashDisplay }     from '@/components/shared/status-badge';
