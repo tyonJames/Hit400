@@ -259,18 +259,43 @@ export class PropertyService {
     const secretKey = this.configService.get<string>('PINATA_SECRET_API_KEY', '');
     if (!apiKey || !secretKey) throw new Error('Pinata credentials not configured');
 
-    const blob = new Blob([buffer], { type: 'application/pdf' });
-    const form = new FormData();
-    form.append('file', blob, fileName);
+    // Use form-data npm package (same as document.service.ts) — reliable multipart
+    // boundary handling that native FormData can miss in some Node versions.
+    const FormData = require('form-data');
+    const form     = new FormData();
+    form.append('file', buffer, { filename: fileName, contentType: 'application/pdf' });
 
     const res = await fetch('https://api.pinata.cloud/pinning/pinFileToIPFS', {
       method:  'POST',
-      headers: { pinata_api_key: apiKey, pinata_secret_api_key: secretKey },
+      headers: { pinata_api_key: apiKey, pinata_secret_api_key: secretKey, ...form.getHeaders() },
       body:    form,
     });
-    if (!res.ok) throw new Error(`Pinata upload failed: ${res.status}`);
+    if (!res.ok) {
+      const detail = await res.text().catch(() => String(res.status));
+      throw new Error(`Pinata upload failed (${res.status}): ${detail}`);
+    }
     const json: any = await res.json();
     return json.IpfsHash as string;
+  }
+
+  async regenerateTitleDeed(id: string): Promise<{ ipfsHash: string }> {
+    const property = await this.propertyRepo.findOne({
+      where: { id, status: PropertyStatus.ACTIVE },
+      relations: ['currentOwner'],
+    });
+    if (!property) throw new NotFoundException('Active property not found.');
+
+    const owner = await this.userRepo.findOne({ where: { id: property.currentOwnerId } });
+    if (!owner) throw new NotFoundException('Property owner not found.');
+
+    const tokenId = parseInt(property.tokenId ?? '0', 10) || 0;
+    const txid    = property.blockchainTxHash ?? 'Not registered on-chain';
+
+    const pdf      = await this.generateTitleDeedPdf(property, owner, txid, tokenId);
+    const ipfsHash = await this.uploadToIpfs(pdf, `title-deed-${property.plotNumber}.pdf`);
+
+    await this.propertyRepo.update({ id }, { ipfsHash });
+    return { ipfsHash };
   }
 
   // ─────────────────────────────────────────────────────────────────────────

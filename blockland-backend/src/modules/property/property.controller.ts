@@ -56,6 +56,12 @@ export class PropertyController {
     return this.propertyService.approve(id, user);
   }
 
+  @Patch(':id/regenerate-title-deed')
+  @Roles(UserRole.REGISTRAR, UserRole.ADMIN)
+  regenerateTitleDeed(@Param('id') id: string) {
+    return this.propertyService.regenerateTitleDeed(id);
+  }
+
   @Patch(':id/resubmit')
   @Roles(UserRole.USER, UserRole.REGISTRAR, UserRole.ADMIN)
   resubmit(
