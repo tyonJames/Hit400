@@ -8,6 +8,7 @@ import { ConfigService }    from '@nestjs/config';
 import * as crypto          from 'crypto';
 import * as fs              from 'fs';
 import * as path            from 'path';
+import PDFDocument          from 'pdfkit';
 import { Property }         from '../../database/entities/property.entity';
 import { User }             from '../../database/entities/user.entity';
 import { OwnershipRecord }  from '../../database/entities/ownership-record.entity';
@@ -164,6 +165,116 @@ export class PropertyService {
     return property;
   }
 
+  // ── Title deed PDF + IPFS upload ─────────────────────────────────────────
+
+  private generateTitleDeedPdf(
+    property: Property,
+    owner:    User,
+    txid:     string,
+    tokenId:  number,
+  ): Promise<Buffer> {
+    return new Promise((resolve, reject) => {
+      const doc    = new PDFDocument({ size: 'A4', margin: 60 });
+      const chunks: Buffer[] = [];
+      doc.on('data',  (c) => chunks.push(c));
+      doc.on('end',   () => resolve(Buffer.concat(chunks)));
+      doc.on('error', reject);
+
+      const fmt = (d?: Date | string | null) =>
+        d ? new Date(d).toLocaleDateString('en-ZA', { day: 'numeric', month: 'long', year: 'numeric' }) : '—';
+
+      const row = (label: string, value: string) => {
+        doc.fontSize(10).font('Helvetica-Bold').text(label, { continued: true });
+        doc.font('Helvetica').text(`  ${value}`);
+        doc.moveDown(0.4);
+      };
+
+      const rule = () => {
+        doc.moveTo(60, doc.y).lineTo(535, doc.y).strokeColor('#ccc').stroke();
+        doc.moveDown(1);
+      };
+
+      // Header
+      doc.fontSize(22).font('Helvetica-Bold').fillColor('#000')
+        .text('BLOCKLAND ZIMBABWE', { align: 'center' });
+      doc.moveDown(0.2);
+      doc.fontSize(12).font('Helvetica').fillColor('#555')
+        .text('LAND REGISTRY', { align: 'center' });
+      doc.moveDown(0.5);
+      doc.fontSize(16).font('Helvetica-Bold').fillColor('#000')
+        .text('CERTIFICATE OF TITLE DEED', { align: 'center' });
+      doc.moveDown(0.3);
+      doc.fontSize(11).font('Helvetica').fillColor('#555')
+        .text(property.titleDeedNumber, { align: 'center' });
+      doc.fillColor('#000').moveDown(1);
+      rule();
+
+      // Property Details
+      doc.fontSize(11).font('Helvetica-Bold').text('PROPERTY DETAILS');
+      doc.moveDown(0.5);
+      row('Plot Number:',        property.plotNumber);
+      row('Title Deed No.:',     property.titleDeedNumber);
+      row('Address:',            property.address);
+      row('Land Size:',          `${Number(property.landSize).toFixed(4)} ${property.unit}`);
+      row('Zoning:',             property.zoningType?.replace(/_/g, ' ') ?? '—');
+      row('Registration Date:',  fmt(property.registrationDate));
+      doc.moveDown(0.5);
+      rule();
+
+      // Registered Owner
+      doc.fontSize(11).font('Helvetica-Bold').text('REGISTERED OWNER');
+      doc.moveDown(0.5);
+      row('Full Name:',    owner.fullName);
+      row('National ID:',  owner.nationalId);
+      if (owner.blocklandId)   row('Blockland ID:',   owner.blocklandId);
+      if (owner.walletAddress) row('Wallet Address:', owner.walletAddress);
+      doc.moveDown(0.5);
+      rule();
+
+      // Blockchain Record
+      doc.fontSize(11).font('Helvetica-Bold').text('BLOCKCHAIN RECORD');
+      doc.moveDown(0.5);
+      row('Token ID:',          String(tokenId));
+      row('Transaction Hash:',  txid);
+      row('Network:',           this.configService.get('STACKS_NETWORK', 'testnet') === 'mainnet'
+                                  ? 'Stacks Mainnet' : 'Stacks Testnet');
+      row('Approved Date:',     fmt(new Date()));
+      doc.moveDown(0.5);
+      rule();
+
+      // Footer
+      doc.fontSize(9).fillColor('#555').text(
+        'This is an official title deed issued by BlockLand Zimbabwe Land Registry. ' +
+        'It is stored on IPFS and anchored on the Stacks blockchain, making it ' +
+        'tamper-evident and publicly verifiable.',
+        { align: 'center' },
+      );
+
+      doc.end();
+    });
+  }
+
+  private async uploadToIpfs(buffer: Buffer, fileName: string): Promise<string> {
+    const apiKey    = this.configService.get<string>('PINATA_API_KEY', '');
+    const secretKey = this.configService.get<string>('PINATA_SECRET_API_KEY', '');
+    if (!apiKey || !secretKey) throw new Error('Pinata credentials not configured');
+
+    const blob = new Blob([buffer], { type: 'application/pdf' });
+    const form = new FormData();
+    form.append('file', blob, fileName);
+
+    const res = await fetch('https://api.pinata.cloud/pinning/pinFileToIPFS', {
+      method:  'POST',
+      headers: { pinata_api_key: apiKey, pinata_secret_api_key: secretKey },
+      body:    form,
+    });
+    if (!res.ok) throw new Error(`Pinata upload failed: ${res.status}`);
+    const json: any = await res.json();
+    return json.IpfsHash as string;
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+
   async approve(id: string, registrar: JwtPayload) {
     const property = await this.propertyRepo.findOne({
       where: { id, status: PropertyStatus.PENDING_APPROVAL },
@@ -238,6 +349,17 @@ export class PropertyService {
       entityType: 'Property', entityId: id,
       metadata: { tokenId, txid, recordHash },
     });
+
+    // Generate title deed PDF and upload to IPFS. Non-blocking — approval
+    // is already committed; a Pinata failure just leaves ipfsHash as the
+    // deterministic placeholder so the link stays hidden until it succeeds.
+    try {
+      const pdf          = await this.generateTitleDeedPdf(property, owner, txid, tokenId);
+      const realIpfsHash = await this.uploadToIpfs(pdf, `title-deed-${property.plotNumber}.pdf`);
+      await this.propertyRepo.update({ id }, { ipfsHash: realIpfsHash });
+    } catch (err: any) {
+      this.logger.warn(`Title deed IPFS upload failed (non-critical): ${err?.message}`);
+    }
 
     return this.propertyRepo.findOne({ where: { id }, relations: ['currentOwner'] });
   }
