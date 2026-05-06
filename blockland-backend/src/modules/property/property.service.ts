@@ -8,7 +8,7 @@ import { ConfigService }    from '@nestjs/config';
 import * as crypto          from 'crypto';
 import * as fs              from 'fs';
 import * as path            from 'path';
-
+import PDFDocument          from 'pdfkit';
 import { Property }         from '../../database/entities/property.entity';
 import { User }             from '../../database/entities/user.entity';
 import { OwnershipRecord }  from '../../database/entities/ownership-record.entity';
@@ -163,6 +163,209 @@ export class PropertyService {
     });
 
     return property;
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+
+  async generateTitleDeedCertificate(id: string): Promise<Buffer> {
+    const property = await this.propertyRepo.findOne({
+      where: { id, status: PropertyStatus.ACTIVE },
+      relations: ['currentOwner'],
+    });
+    if (!property) throw new NotFoundException('Active property not found.');
+
+    const owner = await this.userRepo.findOne({ where: { id: property.currentOwnerId } });
+    if (!owner) throw new NotFoundException('Property owner not found.');
+
+    const network = this.configService.get('STACKS_NETWORK', 'testnet') === 'mainnet'
+      ? 'Stacks Mainnet' : 'Stacks Testnet';
+
+    const fmt = (d?: Date | string | null) =>
+      d ? new Date(d).toLocaleDateString('en-ZA', { day: 'numeric', month: 'long', year: 'numeric' }) : '—';
+
+    const amountInWords = (n: number): string => {
+      if (!n || isNaN(n)) return 'Not disclosed';
+      const ones = ['','One','Two','Three','Four','Five','Six','Seven','Eight','Nine',
+                    'Ten','Eleven','Twelve','Thirteen','Fourteen','Fifteen','Sixteen',
+                    'Seventeen','Eighteen','Nineteen'];
+      const tens = ['','','Twenty','Thirty','Forty','Fifty','Sixty','Seventy','Eighty','Ninety'];
+      const convert = (num: number): string => {
+        if (num === 0) return '';
+        if (num < 20) return ones[num];
+        if (num < 100) return tens[Math.floor(num / 10)] + (num % 10 ? '-' + ones[num % 10] : '');
+        if (num < 1000) return ones[Math.floor(num / 100)] + ' Hundred' + (num % 100 ? ' ' + convert(num % 100) : '');
+        if (num < 1_000_000) return convert(Math.floor(num / 1000)) + ' Thousand' + (num % 1000 ? ' ' + convert(num % 1000) : '');
+        return convert(Math.floor(num / 1_000_000)) + ' Million' + (num % 1_000_000 ? ' ' + convert(num % 1_000_000) : '');
+      };
+      const whole = Math.floor(n);
+      const cents = Math.round((n - whole) * 100);
+      return convert(whole) + ' US Dollars' + (cents ? ` and ${cents}/100` : '');
+    };
+
+    return new Promise((resolve, reject) => {
+      const doc    = new PDFDocument({ size: 'A4', margin: 50 });
+      const chunks: Buffer[] = [];
+      doc.on('data',  (c) => chunks.push(c));
+      doc.on('end',   () => resolve(Buffer.concat(chunks)));
+      doc.on('error', reject);
+
+      const NAVY   = '#1a2d5a';
+      const GOLD   = '#b8860b';
+      const RULE_C = '#9aa0b0';
+      const LEFT   = 50;
+      const RIGHT  = 545;
+      const COL    = 220;
+
+      const rule = (color = RULE_C) => {
+        doc.moveTo(LEFT, doc.y).lineTo(RIGHT, doc.y).strokeColor(color).lineWidth(0.5).stroke();
+        doc.moveDown(0.6);
+      };
+
+      const sectionHeader = (title: string) => {
+        doc.moveDown(0.4);
+        doc.rect(LEFT, doc.y, RIGHT - LEFT, 16).fill(NAVY);
+        doc.fontSize(8).font('Helvetica-Bold').fillColor('#ffffff')
+          .text(title, LEFT + 6, doc.y - 13, { width: RIGHT - LEFT - 12 });
+        doc.fillColor('#000000').moveDown(0.9);
+      };
+
+      const tableRow = (label: string, value: string, bold = false) => {
+        const y = doc.y;
+        doc.fontSize(8).font('Helvetica-Bold').fillColor('#444')
+          .text(label, LEFT + 4, y, { width: COL - LEFT - 4, continued: false });
+        doc.fontSize(8).font(bold ? 'Helvetica-Bold' : 'Helvetica').fillColor('#000')
+          .text(value || '—', COL + 4, y, { width: RIGHT - COL - 4 });
+        doc.moveDown(0.55);
+        doc.moveTo(LEFT, doc.y - 2).lineTo(RIGHT, doc.y - 2).strokeColor('#e5e7eb').lineWidth(0.3).stroke();
+      };
+
+      // ── Header ───────────────────────────────────────────────────────────
+      doc.rect(LEFT, doc.y, RIGHT - LEFT, 70).fill(NAVY);
+      const headerY = doc.y - 63;
+      doc.fontSize(14).font('Helvetica-Bold').fillColor('#ffffff')
+        .text('REPUBLIC OF ZIMBABWE', LEFT, headerY, { align: 'center', width: RIGHT - LEFT });
+      doc.fontSize(11).font('Helvetica-Bold').fillColor(GOLD)
+        .text('DEEDS REGISTRY — CERTIFICATE OF TITLE', LEFT, headerY + 20, { align: 'center', width: RIGHT - LEFT });
+      doc.fontSize(7).font('Helvetica').fillColor('#ccd6f6')
+        .text('Deeds Registries Act [Chapter 20:05]  —  Issued under authority of the Registrar of Deeds', LEFT, headerY + 36, { align: 'center', width: RIGHT - LEFT });
+      doc.fillColor('#000000');
+      doc.moveDown(0.3);
+
+      // ── Title ─────────────────────────────────────────────────────────────
+      doc.fontSize(18).font('Helvetica-Bold').fillColor(NAVY)
+        .text('CERTIFICATE OF TITLE DEED', { align: 'center' });
+      doc.moveDown(0.2);
+      doc.fontSize(9).font('Helvetica').fillColor('#555')
+        .text('This certificate confirms lawful ownership of the property described herein,', { align: 'center' });
+      doc.text('as registered on the BlockLand Zimbabwe digital land registry.', { align: 'center' });
+      doc.fillColor('#000').moveDown(0.5);
+
+      // Deed No row
+      doc.rect(LEFT, doc.y, RIGHT - LEFT, 18).fill('#f8f9fc');
+      const deedY = doc.y - 14;
+      doc.fontSize(8).font('Helvetica-Bold').fillColor('#444')
+        .text('Title Deed No.:', LEFT + 6, deedY, { continued: false });
+      doc.fontSize(8).font('Helvetica-Bold').fillColor(NAVY)
+        .text(property.titleDeedNumber ?? '—', LEFT + 90, deedY, { continued: false });
+      doc.fontSize(8).font('Helvetica-Bold').fillColor('#444')
+        .text('Registration Date:', LEFT + 280, deedY, { continued: false });
+      doc.fontSize(8).font('Helvetica').fillColor('#000')
+        .text(fmt(property.registrationDate ?? property.createdAt), LEFT + 370, deedY, { continued: false });
+      doc.fillColor('#000').moveDown(0.8);
+
+      rule(GOLD);
+
+      // ── Section 1: Registered Owner ───────────────────────────────────────
+      sectionHeader('1.  REGISTERED OWNER PARTICULARS');
+      tableRow('Full Name', (owner.fullName ?? '').toUpperCase(), true);
+      tableRow('National ID Number', owner.nationalId ?? '—');
+      tableRow('BlockLand ID', owner.blocklandId ?? 'Not assigned');
+      tableRow('Stacks Wallet Address (BlockLand)', owner.walletAddress ?? 'Not linked');
+      doc.moveDown(0.3);
+
+      // ── Section 2: Property ───────────────────────────────────────────────
+      sectionHeader('2.  PROPERTY PARTICULARS');
+      tableRow('Stand / Plot Number', property.plotNumber ?? '—', true);
+      tableRow('Township / Location', property.address ?? '—');
+      tableRow('Registered Extent', `${Number(property.landSize).toFixed(4)} ${property.unit ?? 'sqm'}`);
+      tableRow('Zoning Classification', (property.zoningType ?? '—').replace(/_/g, ' '));
+      tableRow('Title Deed Reference', property.titleDeedNumber ?? '—');
+      doc.moveDown(0.3);
+
+      // ── Section 3: Blockchain Record ──────────────────────────────────────
+      sectionHeader('3.  BLOCKCHAIN RECORD');
+      tableRow('BlockLand Property Token ID', property.tokenId ? `#${property.tokenId}` : 'Not registered');
+      tableRow('Registration TX Hash', property.blockchainTxHash ?? '—');
+      tableRow('Blockchain Network', network);
+      tableRow('IPFS Document CID', property.ipfsHash?.match(/^(Qm|bafy)/) ? property.ipfsHash : 'Pending upload');
+      doc.moveDown(0.3);
+
+      // ── Section 4: Registration Audit Trail ───────────────────────────────
+      sectionHeader('4.  REGISTRATION AUDIT TRAIL');
+
+      // Table header
+      doc.rect(LEFT, doc.y, RIGHT - LEFT, 14).fill('#eef0f7');
+      const thY = doc.y - 10;
+      doc.fontSize(7).font('Helvetica-Bold').fillColor('#333');
+      doc.text('STEP', LEFT + 4, thY, { width: 30 });
+      doc.text('ACTION', LEFT + 40, thY, { width: 160 });
+      doc.text('ACTOR', LEFT + 210, thY, { width: 120 });
+      doc.text('ON-CHAIN?', LEFT + 340, thY, { width: 80 });
+      doc.fillColor('#000').moveDown(0.5);
+
+      const auditRow = (step: string, action: string, actor: string, onChain: string) => {
+        const ry = doc.y;
+        doc.fontSize(7).font('Helvetica-Bold').fillColor(NAVY).text(step,   LEFT + 4,  ry, { width: 30 });
+        doc.fontSize(7).font('Helvetica').fillColor('#000').text(action,     LEFT + 40, ry, { width: 160 });
+        doc.text(actor,    LEFT + 210, ry, { width: 120 });
+        doc.fontSize(7).font('Helvetica-Bold')
+          .fillColor(onChain.startsWith('YES') ? '#15803d' : '#64748b')
+          .text(onChain,   LEFT + 340, ry, { width: 80 });
+        doc.fillColor('#000').moveDown(0.55);
+        doc.moveTo(LEFT, doc.y - 2).lineTo(RIGHT, doc.y - 2).strokeColor('#e5e7eb').lineWidth(0.3).stroke();
+      };
+
+      auditRow('1', 'Property Submitted', owner.fullName ?? 'Owner', 'No (DB)');
+      auditRow('2', 'Documents Verified', 'Deeds Registrar', 'No (DB)');
+      auditRow('3', 'Registrar Approved', 'Deeds Registrar', 'No (DB)');
+      auditRow('4', 'Blockchain Registration', 'Smart Contract', property.blockchainTxHash?.match(/^[0-9a-f]{64}$/) ? 'YES — Confirmed' : 'Simulated');
+      doc.moveDown(0.5);
+
+      // ── Section 5: Declaration ────────────────────────────────────────────
+      sectionHeader('5.  DECLARATION');
+      doc.fontSize(8).font('Helvetica').fillColor('#333')
+        .text(
+          `This is to certify that ${(owner.fullName ?? '').toUpperCase()} is the duly registered owner ` +
+          `of the property described herein, as recorded in the BlockLand Zimbabwe Digital Land Registry ` +
+          `on ${fmt(property.registrationDate ?? property.createdAt)}. This certificate is issued under ` +
+          `the authority of the Registrar of Deeds in accordance with the Deeds Registries Act [Chapter 20:05].`,
+          { lineGap: 3 },
+        );
+      doc.moveDown(1.0);
+
+      // Signature blocks
+      const sigY = doc.y;
+      doc.moveTo(LEFT, sigY + 30).lineTo(LEFT + 150, sigY + 30).strokeColor('#000').lineWidth(0.5).stroke();
+      doc.moveTo(RIGHT - 150, sigY + 30).lineTo(RIGHT, sigY + 30).stroke();
+      doc.fontSize(7).font('Helvetica').fillColor('#555')
+        .text('Signature — Registered Owner', LEFT, sigY + 33, { width: 150 });
+      doc.text('Signature — Registrar of Deeds', RIGHT - 150, sigY + 33, { width: 150, align: 'right' });
+      doc.moveDown(3.5);
+
+      // ── Footer ────────────────────────────────────────────────────────────
+      rule(GOLD);
+      doc.rect(LEFT, doc.y, RIGHT - LEFT, 28).fill(NAVY);
+      const footY = doc.y - 23;
+      doc.fontSize(9).font('Helvetica-Bold').fillColor(GOLD)
+        .text('DEEDS REGISTRY — ZIMBABWE — OFFICIAL REGISTRATION', LEFT, footY, { align: 'center', width: RIGHT - LEFT });
+      doc.fontSize(7).font('Helvetica').fillColor('#ccd6f6')
+        .text(
+          `Certificate of Title Deed No. ${property.titleDeedNumber ?? '—'} · Registered pursuant to Deeds Registries Act [Chapter 20:05] · BlockLand Zimbabwe`,
+          LEFT, footY + 13, { align: 'center', width: RIGHT - LEFT },
+        );
+
+      doc.end();
+    });
   }
 
   // ─────────────────────────────────────────────────────────────────────────

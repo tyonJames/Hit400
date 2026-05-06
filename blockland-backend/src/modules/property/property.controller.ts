@@ -105,6 +105,19 @@ export class PropertyController {
     return this.propertyService.findOne(id);
   }
 
+  @Get(':id/certificate')
+  async downloadCertificate(
+    @Param('id') id: string,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<StreamableFile> {
+    const pdf = await this.propertyService.generateTitleDeedCertificate(id);
+    res.set({
+      'Content-Type':        'application/pdf',
+      'Content-Disposition': `attachment; filename="title-deed-${id}.pdf"`,
+    });
+    return new StreamableFile(pdf);
+  }
+
   @Get(':id/documents/:docId/file')
   async serveDocument(
     @Param('id') propertyId: string,

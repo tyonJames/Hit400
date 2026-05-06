@@ -40,7 +40,8 @@ export default function PropertyDetailPage() {
   const [declineComment, setDeclineComment]   = useState('');
   const [showDeclineForm, setShowDeclineForm] = useState(false);
   const [copied, setCopied]       = useState(false);
-  const [openingDoc, setOpeningDoc] = useState<string | null>(null);
+  const [openingDoc, setOpeningDoc]       = useState<string | null>(null);
+  const [downloadingCert, setDownloadingCert] = useState(false);
 
   useEffect(() => {
     propertyService.getById(id).then(setProperty).finally(() => setLoading(false));
@@ -89,6 +90,19 @@ export default function PropertyDetailPage() {
       toast.error(err?.message ?? 'Approval failed.');
     } finally {
       setActioning(false);
+    }
+  }
+
+  async function handleDownloadCertificate() {
+    if (!property) return;
+    setDownloadingCert(true);
+    try {
+      await propertyService.downloadCertificate(property.id, property.plotNumber);
+      toast.success('Certificate of Title Deed downloaded.');
+    } catch (err: any) {
+      toast.error(err?.message ?? 'Failed to download certificate.');
+    } finally {
+      setDownloadingCert(false);
     }
   }
 
@@ -295,7 +309,15 @@ export default function PropertyDetailPage() {
 
           {/* Active property actions */}
           {isActive && (
-            <div className="flex gap-3">
+            <div className="flex gap-3 flex-wrap">
+              <button
+                onClick={handleDownloadCertificate}
+                disabled={downloadingCert}
+                className="btn-primary text-sm flex items-center gap-1.5"
+              >
+                <Download className="w-4 h-4" />
+                {downloadingCert ? 'Generating…' : 'Download Title Deed'}
+              </button>
               <Link href={ROUTES.OWNERSHIP(property.id)} className="btn-secondary text-sm">
                 View Ownership History
               </Link>

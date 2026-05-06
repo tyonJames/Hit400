@@ -72,6 +72,23 @@ export const propertyService = {
 
   getById: (id: string) => api.get<Property & { onChainState?: any }>(`/properties/${id}`),
 
+  downloadCertificate: async (id: string, plotNumber: string) => {
+    const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api/v1';
+    const token = tokenStorage.getAccessToken();
+    const res = await fetch(`${BASE_URL}/properties/${id}/certificate`,
+      { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+    if (!res.ok) throw new Error('Could not generate certificate.');
+    const blob = await res.blob();
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = `title-deed-${plotNumber}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 10_000);
+  },
+
   getByOwner: (userId: string, params?: { page?: number; limit?: number }) =>
     api.get<PaginatedResponse<Property>>(`/properties/owner/${userId}`, params),
 
