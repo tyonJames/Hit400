@@ -5,7 +5,7 @@ import { useParams }   from 'next/navigation';
 import Link            from 'next/link';
 import {
   ArrowLeft, ExternalLink, CheckCircle, XCircle, Clock, AlertCircle,
-  ShieldCheck, Copy, FileText, ImageIcon, Download,
+  ShieldCheck, Copy, ImageIcon, Download,
 } from 'lucide-react';
 import { propertyService }                from '@/lib/api/services';
 import { StatusBadge, TxHashDisplay }     from '@/components/shared/status-badge';
@@ -37,7 +37,6 @@ export default function PropertyDetailPage() {
   const [loading, setLoading]     = useState(true);
   const [actioning, setActioning]   = useState(false);
   const [resubmitting, setResubmitting] = useState(false);
-  const [regenerating, setRegenerating] = useState(false);
   const [declineComment, setDeclineComment]   = useState('');
   const [showDeclineForm, setShowDeclineForm] = useState(false);
   const [copied, setCopied]       = useState(false);
@@ -90,20 +89,6 @@ export default function PropertyDetailPage() {
       toast.error(err?.message ?? 'Approval failed.');
     } finally {
       setActioning(false);
-    }
-  }
-
-  async function handleRegenerateTitleDeed() {
-    if (!property) return;
-    setRegenerating(true);
-    try {
-      const res = await propertyService.regenerateTitleDeed(property.id);
-      setProperty((p) => p ? { ...p, ipfsHash: res.ipfsHash } : p);
-      toast.success('Title deed generated and uploaded to IPFS.');
-    } catch (err: any) {
-      toast.error(err?.message ?? 'Failed to generate title deed.');
-    } finally {
-      setRegenerating(false);
     }
   }
 
@@ -296,7 +281,7 @@ export default function PropertyDetailPage() {
                   </div>
                 </div>
               )}
-              {property.ipfsHash?.match(/^(Qm|bafy)/) ? (
+              {property.ipfsHash && (
                 <a
                   href={`${IPFS_GATEWAY}/ipfs/${property.ipfsHash}`}
                   target="_blank" rel="noopener noreferrer"
@@ -304,16 +289,7 @@ export default function PropertyDetailPage() {
                 >
                   View Title Deed on IPFS <ExternalLink className="w-3 h-3" />
                 </a>
-              ) : (isRegistrar || isAdmin) && property.status === 'ACTIVE' ? (
-                <button
-                  onClick={handleRegenerateTitleDeed}
-                  disabled={regenerating}
-                  className="inline-flex items-center gap-1.5 text-xs text-amber-600 hover:text-amber-700 disabled:opacity-50"
-                >
-                  <FileText className="w-3 h-3" />
-                  {regenerating ? 'Generating…' : 'Generate Title Deed'}
-                </button>
-              ) : null}
+              )}
             </div>
           )}
 
