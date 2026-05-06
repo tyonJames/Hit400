@@ -36,7 +36,7 @@ const tx = await makeContractDeploy({
 });
 
 console.log('\nBroadcasting transaction...');
-const result = await broadcastTransaction({ transaction: tx, network });
+const result = await broadcastTransaction(tx, network);
 console.log('\nBroadcast result:', JSON.stringify(result, null, 2));
 
 if (result.txid) {
