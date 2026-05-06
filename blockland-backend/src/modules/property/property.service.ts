@@ -259,16 +259,18 @@ export class PropertyService {
     const secretKey = this.configService.get<string>('PINATA_SECRET_API_KEY', '');
     if (!apiKey || !secretKey) throw new Error('Pinata credentials not configured');
 
-    // Use form-data npm package (same as document.service.ts) — reliable multipart
-    // boundary handling that native FormData can miss in some Node versions.
     const FormData = require('form-data');
     const form     = new FormData();
     form.append('file', buffer, { filename: fileName, contentType: 'application/pdf' });
 
+    // getBuffer() is required — native fetch in Node 24 cannot consume a
+    // form-data readable stream directly (boundary strings cause Buffer.concat errors).
+    const body = form.getBuffer();
+
     const res = await fetch('https://api.pinata.cloud/pinning/pinFileToIPFS', {
       method:  'POST',
       headers: { pinata_api_key: apiKey, pinata_secret_api_key: secretKey, ...form.getHeaders() },
-      body:    form,
+      body,
     });
     if (!res.ok) {
       const detail = await res.text().catch(() => String(res.status));

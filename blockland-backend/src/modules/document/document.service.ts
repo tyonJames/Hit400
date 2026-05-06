@@ -24,7 +24,7 @@ async function uploadToPinata(
   const response = await fetch('https://api.pinata.cloud/pinning/pinFileToIPFS', {
     method:  'POST',
     headers: { pinata_api_key: apiKey, pinata_secret_api_key: secretKey, ...form.getHeaders() },
-    body:    form,
+    body:    form.getBuffer(),
   });
   if (!response.ok) throw new BadRequestException('IPFS upload failed.');
   const json: any = await response.json();
