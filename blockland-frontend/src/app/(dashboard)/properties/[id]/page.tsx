@@ -281,7 +281,7 @@ export default function PropertyDetailPage() {
                   </div>
                 </div>
               )}
-              {property.ipfsHash && (
+              {property.ipfsHash?.match(/^(Qm|bafy)/) && (
                 <a
                   href={`${IPFS_GATEWAY}/ipfs/${property.ipfsHash}`}
                   target="_blank" rel="noopener noreferrer"

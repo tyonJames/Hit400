@@ -86,7 +86,9 @@ interface TxHashDisplayProps {
 }
 
 export function TxHashDisplay({ txHash, network = 'testnet', label = 'TX' }: TxHashDisplayProps) {
-  const isSimulated = txHash.startsWith('sim-') || txHash.startsWith('mock-');
+  // Real Stacks txids are exactly 64 lowercase hex chars.
+  // Anything else (sim-, mock-, ipfs-, short hashes) is a placeholder.
+  const isSimulated = !/^[0-9a-f]{64}$/.test(txHash);
   const explorerUrl = `https://explorer.hiro.so/txid/${txHash}?chain=${network}`;
   const short = txHash.length > 16 ? `${txHash.slice(0, 8)}...${txHash.slice(-8)}` : txHash;
 
