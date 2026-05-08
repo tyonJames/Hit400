@@ -152,17 +152,43 @@ The application opens at: **http://localhost:3002**
 
 ## Test Accounts
 
-| Role | Email | Password | Notes |
-|------|-------|----------|-------|
-| Admin | admin@blockland.co.zw | Admin@1234 | Full system access |
-| Owner | tendai.moyo@mail.co.zw | Test@1234 | 2 registered properties |
-| Owner | shumirai.dube@mail.co.zw | Test@1234 | 3 registered properties |
-| Owner | farai.mhende@mail.co.zw | Test@1234 | 1 registered property |
+### Administrator
+
+| Email | Password | Access |
+|-------|----------|--------|
+| admin@blockland.co.zw | Admin@1234 | Full system — user management, registrar assignment, approvals |
+
+### Registrar
 
 To create a Registrar account:
 1. Register a new account via the frontend signup page
-2. Log in as Admin → go to **Admin → Users** → approve the account
+2. Log in as Admin → **Admin → Users** → approve the account
 3. Go to **Admin → Registrars** → assign the Registrar role
+
+### Property Owners (20 seeded users — all use password `Test@1234`)
+
+| Full Name | Email | Properties |
+|-----------|-------|-----------|
+| Tendai Moyo | tendai.moyo@mail.co.zw | 2 |
+| Farai Mhende | farai.mhende@mail.co.zw | 1 |
+| Shumirai Dube | shumirai.dube@mail.co.zw | 3 |
+| Blessing Ncube | blessing.ncube@mail.co.zw | 1 |
+| Tatenda Mutasa | tatenda.mutasa@mail.co.zw | 2 |
+| Rutendo Zimba | rutendo.zimba@mail.co.zw | 1 |
+| Simba Chikwanda | simba.chikwanda@mail.co.zw | 2 |
+| Nomvula Mpofu | nomvula.mpofu@mail.co.zw | 1 |
+| Tinotenda Chikowore | tino.chikowore@mail.co.zw | 3 |
+| Rudo Makoni | rudo.makoni@mail.co.zw | 1 |
+| Innocent Ndlovu | innocent.ndlovu@mail.co.zw | 2 |
+| Memory Chirwa | memory.chirwa@mail.co.zw | 1 |
+| Prosper Mutsvairo | prosper.mutsvairo@mail.co.zw | 1 |
+| Thandeka Sithole | thandeka.sithole@mail.co.zw | 2 |
+| Kudzai Mutombo | kudzai.mutombo@mail.co.zw | 1 |
+| Dakarai Chigumba | dakarai.chigumba@mail.co.zw | 1 |
+| Sithembile Moyo | sithembile.moyo@mail.co.zw | 3 |
+| Ngoni Masango | ngoni.masango@mail.co.zw | 1 |
+| Ruvimbo Mapuranga | ruvimbo.mapuranga@mail.co.zw | 2 |
+| Emmerson Takawira | emmerson.takawira@mail.co.zw | 2 |
 
 ---
 
