@@ -1,7 +1,7 @@
 """
 Generate BlockLand Academic Poster as a single PowerPoint slide (A0 portrait).
 Run: python generate_poster_ppt.py
-Output: BlockLand_Poster.pptx
+Output: BlockLand_Poster.pptm
 """
 
 from pptx import Presentation
@@ -11,6 +11,7 @@ from pptx.enum.text import PP_ALIGN
 from pptx.oxml.ns import qn
 from lxml import etree
 import os
+import zipfile
 
 # ── Palette (matches HIT template) ────────────────────────────────────────────
 CREAM      = RGBColor(0xF5, 0xE5, 0xC8)   # warm background
@@ -652,8 +653,26 @@ def main():
     build_col4(slide)
     build_footer(slide)
 
-    output = 'BlockLand_Poster.pptx'
-    prs.save(output)
+    tmp    = 'BlockLand_Poster_tmp.pptx'
+    output = 'BlockLand_Poster.pptm'
+
+    prs.save(tmp)
+
+    # Rewrite as .pptm by patching the content-type in the ZIP
+    pptx_ct = (b'application/vnd.openxmlformats-officedocument'
+               b'.presentationml.presentation.main+xml')
+    pptm_ct = (b'application/vnd.ms-powerpoint'
+               b'.presentation.macroEnabled.main+xml')
+
+    with zipfile.ZipFile(tmp, 'r') as zin, \
+         zipfile.ZipFile(output, 'w', zipfile.ZIP_DEFLATED) as zout:
+        for item in zin.infolist():
+            data = zin.read(item.filename)
+            if item.filename == '[Content_Types].xml':
+                data = data.replace(pptx_ct, pptm_ct)
+            zout.writestr(item, data)
+
+    os.remove(tmp)
     print(f'Saved: {output}')
 
 if __name__ == '__main__':
